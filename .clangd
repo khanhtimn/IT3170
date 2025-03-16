@@ -1,0 +1,16 @@
+{
+  "CompileFlags": {
+    "Add": [
+      "-std=c++17",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+    ]
+  },
+  "Index": {
+    "Background": "Build"
+  },
+  "Completion": {
+    "AllScopes": "true"
+  }
+}
