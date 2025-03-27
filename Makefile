@@ -1,22 +1,42 @@
 ifeq ($(OS),Windows_NT)
-    RM = del /q
-    MKDIR = mkdir
-    TARGET_PATH = ..\$(TARGET_DIR)\week
+    COMPILER = zig c++
+    EXE = .exe
+    RM = powershell -Command "if (Test-Path '$(TARGET_DIR)') { Remove-Item -Recurse -Force '$(TARGET_DIR)' }"
+    MKDIR = powershell -Command "if (-not (Test-Path '$(subst /,\,$1)')) { New-Item -ItemType Directory -Force -Path '$(subst /,\,$1)' }"
 else
-    RM = rm -rf
-    MKDIR = mkdir -p
-    TARGET_PATH = ../$(TARGET_DIR)/week
+    COMPILER = g++
+    EXE =
+    RM = rm -rf $(TARGET_DIR)
+    MKDIR = mkdir -p "$1"
 endif
+
+CC = $(COMPILER)
+CFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -O3
 
 TARGET_DIR = target
 
-# Week directories
-WEEKS = $(wildcard week*)
+WEEK_DIRS = $(wildcard week*)
 
-all: $(WEEKS)
+TARGET_WEEK_DIRS = $(patsubst week%,$(TARGET_DIR)/week%,$(notdir $(WEEK_DIRS)))
 
-$(WEEKS):
-	@echo "Building targets for $@..."
-	$(MAKE) -C $@ TARGET_DIR="$(TARGET_PATH)$(@:week%=%)"
+SOURCES = $(foreach dir,$(WEEK_DIRS),$(wildcard $(dir)/*.cpp))
 
-.PHONY: all $(WEEKS)
+TARGETS = $(patsubst %.cpp,$(TARGET_DIR)/%$(EXE),$(SOURCES))
+
+all: create_dirs $(TARGETS)
+
+create_dirs: $(TARGET_WEEK_DIRS)
+
+$(TARGET_WEEK_DIRS):
+	@$(call MKDIR,$@)
+	@echo "Created directory $@"
+
+$(TARGET_DIR)/%$(EXE): %.cpp
+	@echo "Compiling $<..."
+	@$(CC) $(CFLAGS) $< -o "$@"
+
+clean:
+	@echo "Cleaning $(TARGET_DIR)..."
+	@$(RM)
+
+.PHONY: all clean create_dirs
