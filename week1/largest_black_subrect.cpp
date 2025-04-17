@@ -1,3 +1,24 @@
+/*
+A Rectangle of size n x mis divided into unit-square 1 x 1 with two colors black and white.
+The rectangle is represented by a matrix A(nx m) in which A(i, j) = 1 means that the unit-square at row i, column jis black and A(i, j) = 0 means that the unit-square at row icolumn jis white.
+Find the sub-rectangle of the given rectangle containing only black unit-squares such that the area is maximal.
+Input
+•Line 1: contains 2 positive integers nand m(1 <= n, m <= 1000)
+•Line i+1 (i= 1,…, n): contains the ith of the matrix A
+Output
+Write the area of the sub-rectangle found.
+
+Example
+Input
+4 4
+0 1 1 1
+1 1 1 0
+1 1 0 0
+1 1 1 0
+Output
+6
+*/
+
 #include <algorithm>
 #include <iostream>
 #include <stack>
