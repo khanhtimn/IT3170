@@ -74,7 +74,7 @@ int main()
             std::cin >> positions[i];
         }
 
-        std::cout << find_max_distance(move(positions), C) << std::endl;
+        std::cout << find_max_distance(std::move(positions), C) << std::endl;
     }
     return 0;
 }
