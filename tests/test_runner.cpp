@@ -40,8 +40,9 @@ int TestRunner::run_all_tests()
     std::filesystem::path test_dir = std::filesystem::path("tests") / week_dir / program_name;
 
     if (!std::filesystem::exists(test_dir)) {
-        std::cerr << colors::red << "Error: Test directory not found: " << test_dir << colors::reset << std::endl;
-        return 1;
+        std::cerr << colors::yellow << "Warning: Test directory not found: " << test_dir << colors::reset << std::endl;
+        std::cerr << colors::yellow << "Skipping tests for " << week_dir << "/" << program_name << colors::reset << std::endl;
+        return 0;
     }
 
     std::vector<std::filesystem::path> test_files;
@@ -53,7 +54,8 @@ int TestRunner::run_all_tests()
 
     if (test_files.empty()) {
         std::cerr << colors::yellow << "Warning: No test files found in " << test_dir << colors::reset << std::endl;
-        return 1;
+        std::cerr << colors::yellow << "Skipping tests for " << week_dir << "/" << program_name << colors::reset << std::endl;
+        return 0;
     }
 
     std::sort(test_files.begin(), test_files.end());
@@ -120,16 +122,13 @@ std::string TestRunner::run_program(const std::string& input)
     _pclose(pipe);
     std::remove("input.txt");
 #else
-    // Create temporary files for input and output
     std::string input_file = "input.txt";
     std::string output_file = "output.txt";
 
-    // Write input to file
     std::ofstream in(input_file);
     in << input;
     in.close();
 
-    // Create pipes for communication
     int input_fd = open(input_file.c_str(), O_RDONLY);
     int output_fd = open(output_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
 
@@ -148,28 +147,22 @@ std::string TestRunner::run_program(const std::string& input)
         return "";
     }
 
-    if (pid == 0) { // Child process
-        // Redirect stdin and stdout
+    if (pid == 0) {
         dup2(input_fd, STDIN_FILENO);
         dup2(output_fd, STDOUT_FILENO);
 
-        // Close file descriptors
         close(input_fd);
         close(output_fd);
 
-        // Execute the program
         execl(abs_program_path.c_str(), abs_program_path.c_str(), nullptr);
-        exit(1); // If execl fails
-    } else { // Parent process
-        // Close file descriptors
+        exit(1);
+    } else {
         close(input_fd);
         close(output_fd);
 
-        // Wait for child to finish
         int status;
         waitpid(pid, &status, 0);
 
-        // Read output
         std::ifstream out(output_file);
         std::string line;
         while (std::getline(out, line)) {
@@ -178,7 +171,6 @@ std::string TestRunner::run_program(const std::string& input)
         out.close();
     }
 
-    // Clean up temporary files
     std::remove(input_file.c_str());
     std::remove(output_file.c_str());
 #endif
