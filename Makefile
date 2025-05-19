@@ -1,8 +1,8 @@
 ifeq ($(OS),Windows_NT)
-    COMPILER = zig c++
+    COMPILER = cl
     EXE = .exe
-    RM = powershell -Command "if (Test-Path '$(TARGET_DIR)') { Remove-Item -Recurse -Force '$(TARGET_DIR)' }"
-    MKDIR = powershell -Command "if (-not (Test-Path '$(subst /,\,$1)')) { New-Item -ItemType Directory -Force -Path '$(subst /,\,$1)' }"
+    RM = rmdir /s /q $(TARGET_DIR)
+    MKDIR = mkdir "$1" 2>nul || exit 0
 else
     COMPILER = g++
     EXE =
@@ -11,7 +11,7 @@ else
 endif
 
 CC = $(COMPILER)
-CFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -O3
+CFLAGS = /std:c++17 /W4 /O2
 
 TARGET_DIR = target
 
@@ -33,7 +33,11 @@ $(TARGET_WEEK_DIRS):
 
 $(TARGET_DIR)/%$(EXE): %.cpp
 	@echo "Compiling $<..."
+ifeq ($(OS),Windows_NT)
+	@$(CC) $(CFLAGS) /Fe:"$@" /Fo:"$(dir $@)" $<
+else
 	@$(CC) $(CFLAGS) $< -o "$@"
+endif
 
 clean:
 	@echo "Cleaning $(TARGET_DIR)..."
