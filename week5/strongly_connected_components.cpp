@@ -39,75 +39,60 @@ using std::cout;
 using std::endl;
 using std::vector;
 
-class Graph {
-private:
-    vector<vector<int>> graph;
-    vector<vector<int>> transpose;
-    vector<bool> visited;
+void dfs_first(int vertex,
+    const vector<vector<int>>& graph,
+    vector<bool>& visited,
+    vector<int>& finish_order)
+{
+    visited[vertex] = true;
+    for (int neighbor : graph[vertex]) {
+        if (!visited[neighbor]) {
+            dfs_first(neighbor, graph, visited, finish_order);
+        }
+    }
+    finish_order.push_back(vertex);
+}
+
+void dfs_second(int vertex,
+    const vector<vector<int>>& transpose,
+    vector<bool>& visited)
+{
+    visited[vertex] = true;
+    for (int neighbor : transpose[vertex]) {
+        if (!visited[neighbor]) {
+            dfs_second(neighbor, transpose, visited);
+        }
+    }
+}
+
+int count_strongly_connected_components(const vector<vector<int>>& graph,
+    const vector<vector<int>>& transpose,
+    int num_vertices)
+{
+    vector<bool> visited(num_vertices + 1, false);
     vector<int> finish_order;
-    int num_vertices;
-    int num_components;
+    int num_components = 0;
 
-    void dfs_first(int vertex)
-    {
-        visited[vertex] = true;
-        for (int neighbor : graph[vertex]) {
-            if (!visited[neighbor]) {
-                dfs_first(neighbor);
-            }
-        }
-        finish_order.push_back(vertex);
-    }
-
-    void dfs_second(int vertex)
-    {
-        visited[vertex] = true;
-        for (int neighbor : transpose[vertex]) {
-            if (!visited[neighbor]) {
-                dfs_second(neighbor);
-            }
+    // First DFS to get finish order
+    for (int i = 1; i <= num_vertices; ++i) {
+        if (!visited[i]) {
+            dfs_first(i, graph, visited, finish_order);
         }
     }
 
-public:
-    Graph(int n)
-        : num_vertices(n)
-        , num_components(0)
-    {
-        graph.resize(n + 1);
-        transpose.resize(n + 1);
-        visited.resize(n + 1);
-    }
+    // Reset visited array
+    std::fill(visited.begin(), visited.end(), false);
 
-    void add_edge(int from, int to)
-    {
-        graph[from].push_back(to);
-        transpose[to].push_back(from);
-    }
-
-    int count_strongly_connected_components()
-    {
-        std::fill(visited.begin(), visited.end(), false);
-        finish_order.clear();
-        num_components = 0;
-
-        for (int i = 1; i <= num_vertices; ++i) {
-            if (!visited[i]) {
-                dfs_first(i);
-            }
+    // Second DFS on transpose graph
+    for (auto it = finish_order.rbegin(); it != finish_order.rend(); ++it) {
+        if (!visited[*it]) {
+            dfs_second(*it, transpose, visited);
+            ++num_components;
         }
-
-        std::fill(visited.begin(), visited.end(), false);
-        for (auto it = finish_order.rbegin(); it != finish_order.rend(); ++it) {
-            if (!visited[*it]) {
-                dfs_second(*it);
-                ++num_components;
-            }
-        }
-
-        return num_components;
     }
-};
+
+    return num_components;
+}
 
 int main()
 {
@@ -117,14 +102,16 @@ int main()
     int num_vertices, num_edges;
     cin >> num_vertices >> num_edges;
 
-    Graph graph(num_vertices);
+    vector<vector<int>> graph(num_vertices + 1);
+    vector<vector<int>> transpose(num_vertices + 1);
 
     for (int i = 0; i < num_edges; ++i) {
         int from, to;
         cin >> from >> to;
-        graph.add_edge(from, to);
+        graph[from].push_back(to);
+        transpose[to].push_back(from);
     }
 
-    cout << graph.count_strongly_connected_components() << endl;
+    cout << count_strongly_connected_components(graph, transpose, num_vertices) << endl;
     return 0;
 }
