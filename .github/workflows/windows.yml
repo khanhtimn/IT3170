@@ -29,7 +29,7 @@ jobs:
           for %%p in ("%%w\*.cpp") do (
             echo Found source file: %%~fp
             echo Compiling %%~nxw/%%~nxp...
-            cl /std:c++17 /W4 /O2 /EHsc /Fo"build\%%~nxw\" /Fe"build\%%~nxw\%%~np.exe" "%%~fp"
+            cl /std:c++17 /W4 /O2 /EHsc /Fo"build\%%~nxw" /Fe"build\%%~nxw\%%~np.exe" "%%~fp"
             if errorlevel 1 (
               echo Failed to compile: %%~fp
               exit /b 1
@@ -40,7 +40,7 @@ jobs:
       shell: cmd
       run: |
         echo Building test framework...
-        cl /std:c++17 /W4 /O2 /EHsc /Fo"build\" /Fe"build\test.exe" tests\test.cpp tests\test_runner.cpp
+        cl /std:c++17 /W4 /O2 /EHsc /Fo"build" /Fe"build\test.exe" tests\test.cpp tests\test_runner.cpp
         if errorlevel 1 (
           echo Failed to build test framework
           exit /b 1
