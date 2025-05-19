@@ -26,63 +26,74 @@ Output
 */
 
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <vector>
 
+using std::cin;
+using std::cout;
+using std::endl;
 using std::vector;
 
-vector<vector<int>> buildSparseTable(const vector<int>& arr)
+vector<vector<int>> build_sparse_table(const vector<int>& values)
 {
-    int n = arr.size();
-    int log_n = 32 - __builtin_clz(n);
-    vector<vector<int>> st(n, vector<int>(log_n));
+    int n = values.size();
+    int log_n = std::log2(n) + 1;
+    vector<vector<int>> sparse_table(log_n, vector<int>(n, -1));
 
-    for (int i = 0; i < n; i++) {
-        st[i][0] = arr[i];
+    for (int j = 0; j < n; ++j) {
+        sparse_table[0][j] = j;
     }
 
-    for (int j = 1; (1 << j) <= n; j++) {
-        for (int i = 0; i + (1 << j) - 1 < n; i++) {
-            st[i][j] = std::min(st[i][j - 1], st[i + (1 << (j - 1))][j - 1]);
+    for (int i = 1; (1 << i) <= n; ++i) {
+        for (int j = 0; j + (1 << i) - 1 < n; ++j) {
+            int left = sparse_table[i - 1][j];
+            int right = sparse_table[i - 1][j + (1 << (i - 1))];
+            sparse_table[i][j] = (values[left] < values[right]) ? left : right;
         }
     }
 
-    return st;
+    return sparse_table;
 }
 
-int queryRMQ(const vector<vector<int>>& st, int left, int right)
+int query_min_index(const vector<vector<int>>& sparse_table,
+    const vector<int>& values,
+    int left, int right)
 {
-    int len = right - left + 1;
-    int log_len = 31 - __builtin_clz(len);
+    int k = std::log2(right - left + 1);
+    int power = 1 << k;
 
-    return std::min(st[left][log_len], st[right - (1 << log_len) + 1][log_len]);
+    int left_min = sparse_table[k][left];
+    int right_min = sparse_table[k][right - power + 1];
+
+    return (values[left_min] < values[right_min]) ? left_min : right_min;
 }
 
-vector<int> readArray()
+vector<int> read_values()
 {
     int n;
-    std::cin >> n;
+    cin >> n;
 
-    vector<int> arr(n);
-    for (auto& x : arr) {
-        std::cin >> x;
+    vector<int> values(n);
+    for (int i = 0; i < n; ++i) {
+        cin >> values[i];
     }
 
-    return arr;
+    return values;
 }
 
-long long processQueries(const vector<vector<int>>& st)
+long long process_queries(const vector<vector<int>>& sparse_table,
+    const vector<int>& values)
 {
     int m;
-    std::cin >> m;
+    cin >> m;
 
     long long sum = 0;
-    for (int k = 0; k < m; k++) {
-        int i, j;
-        std::cin >> i >> j;
-
-        int min_val = queryRMQ(st, i, j);
-        sum += min_val;
+    for (int k = 0; k < m; ++k) {
+        int left, right;
+        cin >> left >> right;
+        int min_index = query_min_index(sparse_table, values, left, right);
+        sum += values[min_index];
     }
 
     return sum;
@@ -90,12 +101,12 @@ long long processQueries(const vector<vector<int>>& st)
 
 int main()
 {
-    vector<int> arr = readArray();
+    std::ios::sync_with_stdio(false);
+    std::cin.tie(nullptr);
 
-    vector<vector<int>> sparseTable = buildSparseTable(arr);
+    vector<int> values = read_values();
+    vector<vector<int>> sparse_table = build_sparse_table(values);
 
-    long long result = processQueries(sparseTable);
-    std::cout << result << std::endl;
-
+    cout << process_queries(sparse_table, values) << endl;
     return 0;
 }
