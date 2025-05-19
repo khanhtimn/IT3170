@@ -193,42 +193,58 @@ std::string TestRunner::run_program(const std::string& input)
         CloseHandle(piProcInfo.hThread);
         CloseHandle(hChildStdoutRd);
 #else
-        int input_fd = open(input_file.c_str(), O_RDONLY);
-        if (input_fd == -1) {
-            std::cerr << colors::red << "Error: Failed to open input file" << colors::reset << std::endl;
-            return "";
-        }
+        int stdin_pipe[2];
+        int stdout_pipe[2];
 
-        int output_fd = open(output_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        if (output_fd == -1) {
-            close(input_fd);
-            std::cerr << colors::red << "Error: Failed to create output file" << colors::reset << std::endl;
+        if (pipe(stdin_pipe) == -1 || pipe(stdout_pipe) == -1) {
+            std::cerr << colors::red << "Error: Failed to create pipes" << colors::reset << std::endl;
             return "";
         }
 
         pid_t pid = fork();
         if (pid == -1) {
-            close(input_fd);
-            close(output_fd);
+            close(stdin_pipe[0]);
+            close(stdin_pipe[1]);
+            close(stdout_pipe[0]);
+            close(stdout_pipe[1]);
             std::cerr << colors::red << "Error: Failed to create process" << colors::reset << std::endl;
             return "";
         }
 
         if (pid == 0) {
-            if (dup2(input_fd, STDIN_FILENO) == -1 || dup2(output_fd, STDOUT_FILENO) == -1) {
+            close(stdin_pipe[1]);
+            close(stdout_pipe[0]);
+
+            if (dup2(stdin_pipe[0], STDIN_FILENO) == -1 || dup2(stdout_pipe[1], STDOUT_FILENO) == -1) {
                 std::cerr << colors::red << "Error: Failed to redirect I/O" << colors::reset << std::endl;
                 exit(1);
             }
 
-            close(input_fd);
-            close(output_fd);
+            close(stdin_pipe[0]);
+            close(stdout_pipe[1]);
 
             execl(abs_program_path.c_str(), abs_program_path.c_str(), nullptr);
             std::cerr << colors::red << "Error: Failed to execute program" << colors::reset << std::endl;
             exit(1);
         } else {
-            close(input_fd);
-            close(output_fd);
+            close(stdin_pipe[0]);
+            close(stdout_pipe[1]);
+
+            if (write(stdin_pipe[1], input.c_str(), input.length()) == -1) {
+                std::cerr << colors::red << "Error: Failed to write input" << colors::reset << std::endl;
+                close(stdin_pipe[1]);
+                close(stdout_pipe[0]);
+                return "";
+            }
+            close(stdin_pipe[1]);
+
+            char buffer[4096];
+            ssize_t bytes_read;
+            while ((bytes_read = read(stdout_pipe[0], buffer, sizeof(buffer) - 1)) > 0) {
+                buffer[bytes_read] = '\0';
+                result.append(buffer, bytes_read);
+            }
+            close(stdout_pipe[0]);
 
             int status;
             if (waitpid(pid, &status, 0) == -1) {
@@ -239,17 +255,6 @@ std::string TestRunner::run_program(const std::string& input)
             if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
                 std::cerr << colors::yellow << "Warning: Program exited with status " << WEXITSTATUS(status) << colors::reset << std::endl;
             }
-        }
-
-        std::ifstream out(output_file, std::ios::binary);
-        if (!out) {
-            std::cerr << colors::red << "Error: Failed to read output file" << colors::reset << std::endl;
-            return "";
-        }
-
-        std::string line;
-        while (std::getline(out, line)) {
-            result += line + "\n";
         }
 #endif
 
