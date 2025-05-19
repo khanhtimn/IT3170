@@ -19,7 +19,6 @@ Output
 4
 */
 
-#include <algorithm>
 #include <iostream>
 #include <vector>
 
