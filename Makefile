@@ -12,7 +12,7 @@ else
     RM = rm -rf
     MKDIR = mkdir -p
     CFLAGS = -std=c++17 -Wall -O2 -x c++
-    LDFLAGS = -lstdc++
+    LDFLAGS ?= -lstdc++ -lm
     COMPILE = $(CC) $(CFLAGS) $< -o "$@" $(LDFLAGS)
     LINK = $(CC) $(CFLAGS) $^ -o "$@" $(LDFLAGS)
 endif
