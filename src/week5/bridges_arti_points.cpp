@@ -1,13 +1,16 @@
 /*
 Description
-Given an undirected graph containing N vertices and M edges, find all the articulation points and the bridges in the graph.
+Given an undirected graph containing N vertices and M edges, find all the
+articulation points and the bridges in the graph.
 
 Input
 The first line consists of two space-separated integers denoting N and M,
-M lines follow, each containing two space-separated integers X and Y denoting there is an edge between X and Y.
+M lines follow, each containing two space-separated integers X and Y denoting
+there is an edge between X and Y.
 
 Output
-One line consists of two integers denoting the number of articulation points and the number of bridges.
+One line consists of two integers denoting the number of articulation points and
+the number of bridges.
 
 Example
 Input
@@ -53,8 +56,14 @@ void dfs(int vertex,
         if (discovery_time[neighbor] == 0) {
             num_children++;
             parent[neighbor] = vertex;
-            dfs(neighbor, adj, discovery_time, low_value, parent,
-                is_articulation_point, num_bridges, current_time);
+            dfs(neighbor,
+                adj,
+                discovery_time,
+                low_value,
+                parent,
+                is_articulation_point,
+                num_bridges,
+                current_time);
 
             low_value[vertex] = std::min(low_value[vertex], low_value[neighbor]);
 
@@ -89,13 +98,19 @@ std::pair<int, int> find_articulation_points_and_bridges(const vector<vector<int
 
     for (int i = 1; i <= num_vertices; ++i) {
         if (discovery_time[i] == 0) {
-            dfs(i, adj, discovery_time, low_value, parent,
-                is_articulation_point, num_bridges, current_time);
+            dfs(i,
+                adj,
+                discovery_time,
+                low_value,
+                parent,
+                is_articulation_point,
+                num_bridges,
+                current_time);
         }
     }
 
-    int num_articulation_points = std::count(is_articulation_point.begin(),
-        is_articulation_point.end(), true);
+    int num_articulation_points = std::count(
+        is_articulation_point.begin(), is_articulation_point.end(), true);
 
     return { num_articulation_points, num_bridges };
 }
