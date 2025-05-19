@@ -102,78 +102,168 @@ void TestRunner::run_test(const std::string& test_file)
 std::string TestRunner::run_program(const std::string& input)
 {
     fs::path abs_program_path = fs::absolute(program_path);
+    if (!fs::exists(abs_program_path)) {
+        std::cerr << colors::red << "Error: Program not found: " << abs_program_path << colors::reset << std::endl;
+        return "";
+    }
+
     std::string result;
+    std::string temp_dir = fs::temp_directory_path().string();
+    std::string input_file = (fs::path(temp_dir) / "test_input.txt").string();
+    std::string output_file = (fs::path(temp_dir) / "test_output.txt").string();
+
+    try {
+        {
+            std::ofstream in(input_file, std::ios::binary);
+            if (!in) {
+                std::cerr << colors::red << "Error: Failed to create input file" << colors::reset << std::endl;
+                return "";
+            }
+            in << input;
+            if (!in) {
+                std::cerr << colors::red << "Error: Failed to write input file" << colors::reset << std::endl;
+                return "";
+            }
+        }
 
 #ifdef _WIN32
-    std::string command = "\"" + abs_program_path.string() + "\" < input.txt";
+        SECURITY_ATTRIBUTES saAttr;
+        saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+        saAttr.bInheritHandle = TRUE;
+        saAttr.lpSecurityDescriptor = NULL;
 
-    std::ofstream input_file("input.txt");
-    input_file << input;
-    input_file.close();
+        HANDLE hChildStdoutRd, hChildStdoutWr;
+        if (!CreatePipe(&hChildStdoutRd, &hChildStdoutWr, &saAttr, 0)) {
+            std::cerr << colors::red << "Error: Failed to create pipe" << colors::reset << std::endl;
+            return "";
+        }
 
-    FILE* pipe = _popen(command.c_str(), "r");
-    if (!pipe)
-        return "";
+        if (!SetHandleInformation(hChildStdoutRd, HANDLE_FLAG_INHERIT, 0)) {
+            std::cerr << colors::red << "Error: Failed to set handle information" << colors::reset << std::endl;
+            CloseHandle(hChildStdoutRd);
+            CloseHandle(hChildStdoutWr);
+            return "";
+        }
 
-    char buffer[128];
-    while (fgets(buffer, sizeof(buffer), pipe)) {
-        result += buffer;
-    }
-    _pclose(pipe);
-    std::remove("input.txt");
+        PROCESS_INFORMATION piProcInfo;
+        STARTUPINFO siStartInfo;
+        ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
+        ZeroMemory(&siStartInfo, sizeof(STARTUPINFO));
+        siStartInfo.cb = sizeof(STARTUPINFO);
+        siStartInfo.hStdError = hChildStdoutWr;
+        siStartInfo.hStdOutput = hChildStdoutWr;
+        siStartInfo.hStdInput = CreateFile(input_file.c_str(), GENERIC_READ, 0, &saAttr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+
+        std::string cmdLine = "\"" + abs_program_path.string() + "\"";
+        if (!CreateProcess(NULL, const_cast<LPSTR>(cmdLine.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &siStartInfo, &piProcInfo)) {
+            std::cerr << colors::red << "Error: Failed to create process" << colors::reset << std::endl;
+            CloseHandle(hChildStdoutRd);
+            CloseHandle(hChildStdoutWr);
+            if (siStartInfo.hStdInput != INVALID_HANDLE_VALUE) {
+                CloseHandle(siStartInfo.hStdInput);
+            }
+            return "";
+        }
+
+        CloseHandle(hChildStdoutWr);
+        if (siStartInfo.hStdInput != INVALID_HANDLE_VALUE) {
+            CloseHandle(siStartInfo.hStdInput);
+        }
+
+        DWORD dwRead;
+        CHAR chBuf[4096];
+        bool bSuccess = FALSE;
+
+        while (true) {
+            bSuccess = ReadFile(hChildStdoutRd, chBuf, sizeof(chBuf), &dwRead, NULL);
+            if (!bSuccess || dwRead == 0)
+                break;
+            result.append(chBuf, dwRead);
+        }
+
+        WaitForSingleObject(piProcInfo.hProcess, INFINITE);
+        DWORD exitCode;
+        GetExitCodeProcess(piProcInfo.hProcess, &exitCode);
+        if (exitCode != 0) {
+            std::cerr << colors::yellow << "Warning: Program exited with status " << exitCode << colors::reset << std::endl;
+        }
+
+        CloseHandle(piProcInfo.hProcess);
+        CloseHandle(piProcInfo.hThread);
+        CloseHandle(hChildStdoutRd);
 #else
-    std::string input_file = "input.txt";
-    std::string output_file = "output.txt";
+        int input_fd = open(input_file.c_str(), O_RDONLY);
+        if (input_fd == -1) {
+            std::cerr << colors::red << "Error: Failed to open input file" << colors::reset << std::endl;
+            return "";
+        }
 
-    std::ofstream in(input_file);
-    in << input;
-    in.close();
-
-    int input_fd = open(input_file.c_str(), O_RDONLY);
-    int output_fd = open(output_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
-
-    if (input_fd == -1 || output_fd == -1) {
-        if (input_fd != -1)
+        int output_fd = open(output_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (output_fd == -1) {
             close(input_fd);
-        if (output_fd != -1)
+            std::cerr << colors::red << "Error: Failed to create output file" << colors::reset << std::endl;
+            return "";
+        }
+
+        pid_t pid = fork();
+        if (pid == -1) {
+            close(input_fd);
             close(output_fd);
-        return "";
-    }
+            std::cerr << colors::red << "Error: Failed to create process" << colors::reset << std::endl;
+            return "";
+        }
 
-    pid_t pid = fork();
-    if (pid == -1) {
-        close(input_fd);
-        close(output_fd);
-        return "";
-    }
+        if (pid == 0) {
+            if (dup2(input_fd, STDIN_FILENO) == -1 || dup2(output_fd, STDOUT_FILENO) == -1) {
+                std::cerr << colors::red << "Error: Failed to redirect I/O" << colors::reset << std::endl;
+                exit(1);
+            }
 
-    if (pid == 0) {
-        dup2(input_fd, STDIN_FILENO);
-        dup2(output_fd, STDOUT_FILENO);
+            close(input_fd);
+            close(output_fd);
 
-        close(input_fd);
-        close(output_fd);
+            execl(abs_program_path.c_str(), abs_program_path.c_str(), nullptr);
+            std::cerr << colors::red << "Error: Failed to execute program" << colors::reset << std::endl;
+            exit(1);
+        } else {
+            close(input_fd);
+            close(output_fd);
 
-        execl(abs_program_path.c_str(), abs_program_path.c_str(), nullptr);
-        exit(1);
-    } else {
-        close(input_fd);
-        close(output_fd);
+            int status;
+            if (waitpid(pid, &status, 0) == -1) {
+                std::cerr << colors::red << "Error: Failed to wait for program" << colors::reset << std::endl;
+                return "";
+            }
 
-        int status;
-        waitpid(pid, &status, 0);
+            if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
+                std::cerr << colors::yellow << "Warning: Program exited with status " << WEXITSTATUS(status) << colors::reset << std::endl;
+            }
+        }
 
-        std::ifstream out(output_file);
+        std::ifstream out(output_file, std::ios::binary);
+        if (!out) {
+            std::cerr << colors::red << "Error: Failed to read output file" << colors::reset << std::endl;
+            return "";
+        }
+
         std::string line;
         while (std::getline(out, line)) {
             result += line + "\n";
         }
-        out.close();
+#endif
+
+    } catch (const std::exception& e) {
+        std::cerr << colors::red << "Error: " << e.what() << colors::reset << std::endl;
+        return "";
     }
 
-    std::remove(input_file.c_str());
-    std::remove(output_file.c_str());
-#endif
+    try {
+        fs::remove(input_file);
+        fs::remove(output_file);
+    } catch (const std::exception& e) {
+        std::cerr << colors::yellow << "Warning: Failed to clean up temporary files: " << e.what() << colors::reset << std::endl;
+    }
 
     return result;
 }
@@ -185,43 +275,64 @@ std::pair<std::string, std::string> TestRunner::parse_test_file(const std::strin
         return { "", "" };
     }
 
-    std::string line, input, expected;
-    bool reading_input = false;
-    bool found_input_quote = false;
-
-    while (std::getline(file, line)) {
-        if (line.find("INPUT:") == 0) {
-            reading_input = true;
-            size_t start = line.find('"');
-            if (start != std::string::npos) {
-                found_input_quote = true;
-                input = line.substr(start + 1);
-            }
-            continue;
-        }
-        if (line.find("OUTPUT:") == 0) {
-            reading_input = false;
-            size_t start = line.find('"');
-            if (start != std::string::npos) {
-                size_t end = line.find('"', start + 1);
-                if (end != std::string::npos) {
-                    expected = line.substr(start + 1, end - start - 1);
-                }
-            }
-            continue;
-        }
-
-        if (reading_input && found_input_quote) {
-            size_t end = line.find('"');
-            if (end != std::string::npos) {
-                input += "\n" + line.substr(0, end);
-                found_input_quote = false;
-            } else {
-                input += "\n" + line;
-            }
-        }
-    }
+    std::string content((std::istreambuf_iterator<char>(file)),
+        std::istreambuf_iterator<char>());
     file.close();
+
+    size_t input_start = content.find("INPUT:");
+    if (input_start == std::string::npos) {
+        return { "", "" };
+    }
+
+    size_t output_start = content.find("OUTPUT:", input_start);
+    if (output_start == std::string::npos) {
+        return { "", "" };
+    }
+
+    size_t input_quote_start = content.find('"', input_start);
+    if (input_quote_start == std::string::npos) {
+        return { "", "" };
+    }
+    size_t input_quote_end = content.find('"', input_quote_start + 1);
+    if (input_quote_end == std::string::npos) {
+        return { "", "" };
+    }
+    std::string input = content.substr(input_quote_start + 1, input_quote_end - input_quote_start - 1);
+
+    size_t output_quote_start = content.find('"', output_start);
+    if (output_quote_start == std::string::npos) {
+        return { "", "" };
+    }
+    size_t output_quote_end = content.find('"', output_quote_start + 1);
+    if (output_quote_end == std::string::npos) {
+        return { "", "" };
+    }
+    std::string expected = content.substr(output_quote_start + 1, output_quote_end - output_quote_start - 1);
+
+    auto normalize_line_endings = [](std::string& str) {
+        std::string result;
+        result.reserve(str.length());
+        for (size_t i = 0; i < str.length(); i++) {
+            if (str[i] == '\r' && i + 1 < str.length() && str[i + 1] == '\n') {
+                result += '\n';
+                i++;
+            } else if (str[i] != '\r') {
+                result += str[i];
+            }
+        }
+        str = result;
+    };
+
+    normalize_line_endings(input);
+    normalize_line_endings(expected);
+
+    auto trim = [](std::string& str) {
+        str.erase(0, str.find_first_not_of(" \t\n\r"));
+        str.erase(str.find_last_not_of(" \t\n\r") + 1);
+    };
+
+    trim(input);
+    trim(expected);
 
     return { input, expected };
 }
@@ -232,14 +343,16 @@ void TestRunner::print_summary() const
         [](const TestResult& r) { return r.passed; });
     int total = results.size();
 
-    std::cout << colors::green << "[==========]" << colors::reset << " " << total << " test cases ran.\n";
-    std::cout << colors::green << "[  PASSED  ]" << colors::reset << " " << passed << " tests.\n";
+    if (total != 0) {
+        std::cout << colors::green << "[==========]" << colors::reset << " " << total << " test cases ran.\n";
+        std::cout << colors::green << "[  PASSED  ]" << colors::reset << " " << passed << " tests.\n";
 
-    if (passed < total) {
-        std::cout << colors::red << "[  FAILED  ]" << colors::reset << " " << (total - passed) << " tests, listed below:\n";
-        for (const auto& result : results) {
-            if (!result.passed) {
-                std::cout << colors::red << "[  FAILED  ]" << colors::reset << " " << result.test_name << "\n";
+        if (passed < total) {
+            std::cout << colors::red << "[  FAILED  ]" << colors::reset << " " << (total - passed) << " tests, listed below:\n";
+            for (const auto& result : results) {
+                if (!result.passed) {
+                    std::cout << colors::red << "[  FAILED  ]" << colors::reset << " " << result.test_name << "\n";
+                }
             }
         }
     }
