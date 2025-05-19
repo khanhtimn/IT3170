@@ -33,12 +33,20 @@ all: $(TARGETS)
 $(BUILD_DIR)/%$(EXE): $(SRC_DIR)/%.cpp
 	@$(MKDIR) "$(dir $@)" 2>nul || exit 0
 	@echo "Compiling $<..."
+ifeq ($(OS),Windows_NT)
+	@$(CC) $(CFLAGS) /Fe:"$@" /Fo:"$(dir $@)" $<
+else
 	@$(COMPILE)
+endif
 
 $(TEST_EXE): $(TEST_DIR)/test.cpp $(TEST_DIR)/test_runner.cpp
 	@$(MKDIR) "$(dir $@)" 2>nul || exit 0
 	@echo "Compiling test framework..."
+ifeq ($(OS),Windows_NT)
+	@$(CC) $(CFLAGS) /Fe:"$@" /Fo:"$(dir $@)" $^
+else
 	@$(LINK)
+endif
 
 .PHONY: test test-all
 test: $(BUILD_DIR)/$(WEEK)/$(PROGRAM)$(EXE) $(TEST_EXE)
