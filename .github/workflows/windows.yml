@@ -1,4 +1,4 @@
-name: Windows Build and Test
+name: Windows CI
 
 on:
   push:
@@ -7,35 +7,28 @@ on:
 
 jobs:
   build:
-    name: Build
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v3
-    
     - name: Install Visual Studio Build Tools
       uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: x64
-    
-    - name: Build all programs
+    - name: Build
       shell: cmd
       run: |
         make clean
         make all
 
   test:
-    name: Test
     needs: build
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v3
-    
     - name: Install Visual Studio Build Tools
       uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: x64
-    
-    - name: Run tests
+    - name: Test
       shell: cmd
-      run: |
-        make test-all 
+      run: make test-all 

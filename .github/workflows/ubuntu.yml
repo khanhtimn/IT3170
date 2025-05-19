@@ -6,18 +6,23 @@ on:
     branches: [ main ]
 
 jobs:
-  ci:
+  build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        job: [build, test]
     steps:
     - uses: actions/checkout@v3
     - name: Install dependencies
       run: sudo apt-get update && sudo apt-get install -y gcc g++ make
     - name: Build
-      if: matrix.job == 'build'
-      run: make clean && make all
+      run: |
+        make clean
+        make all
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y gcc g++ make
     - name: Test
-      if: matrix.job == 'test'
       run: make test-all 
