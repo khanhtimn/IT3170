@@ -15,8 +15,10 @@ jobs:
       with:
         arch: x64
     - name: Build
-      shell: pwsh
+      shell: cmd
       run: |
+        where cl
+        where link
         make clean
         make all
 
@@ -30,5 +32,8 @@ jobs:
       with:
         arch: x64
     - name: Test
-      shell: pwsh
-      run: make test-all 
+      shell: cmd
+      run: |
+        where cl
+        where link
+        make test-all 

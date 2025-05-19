@@ -67,12 +67,12 @@ endif
 .PHONY: clean
 clean:
 ifeq ($(OS),Windows_NT)
-	@if exist $(BUILD_DIR) (echo "Cleaning $(BUILD_DIR)..." && $(RM) $(BUILD_DIR))
-	@if exist $(TEST_DIR) for /r $(TEST_DIR) %%f in (*.out) do del "%%f"
+	@if exist "$(BUILD_DIR)" (echo "Cleaning $(BUILD_DIR)..." && $(RM) "$(BUILD_DIR)")
+	@if exist "$(TEST_DIR)" (for /r "$(TEST_DIR)" %%f in (*.out) do del "%%f")
 else
 	@if [ -d "$(BUILD_DIR)" ]; then \
 		echo "Cleaning $(BUILD_DIR)..."; \
-		$(RM) $(BUILD_DIR); \
+		$(RM) "$(BUILD_DIR)"; \
 	fi
-	@find $(TEST_DIR) -name "*.out" -type f -delete
+	@find "$(TEST_DIR)" -name "*.out" -type f -delete
 endif
