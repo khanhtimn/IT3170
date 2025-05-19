@@ -35,7 +35,6 @@ Explanation:
 Total cost 10 + 20 = 30 dong
 */
 
-#include <algorithm>
 #include <iostream>
 #include <queue>
 #include <vector>
