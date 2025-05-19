@@ -66,10 +66,20 @@ jobs:
     - name: Run tests
       shell: cmd
       run: |
+        set FAILED=0
         for /d %%w in (src\week*) do (
           for %%p in ("%%w\*.cpp") do (
             echo.
             echo Testing %%~nxw/%%~np...
             build\test.exe %%~nxw %%~np
+            if errorlevel 1 (
+              echo Test failed for %%~nxw/%%~np
+              set FAILED=1
+            )
           )
-        ) 
+        )
+        if %FAILED%==1 (
+          echo Some tests failed
+          exit /b 1
+        )
+        echo All tests passed 

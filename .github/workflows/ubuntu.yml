@@ -41,5 +41,22 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y gcc g++ make
-    - name: Test
-      run: make test-all 
+    - name: Run tests
+      run: |
+        FAILED=0
+        for src in src/week*/*.cpp; do
+          week=$(basename $(dirname "$src"))
+          prog=$(basename "$src" .cpp)
+          echo
+          echo "Testing $week/$prog..."
+          build/test "$week" "$prog"
+          if [ $? -ne 0 ]; then
+            echo "Test failed for $week/$prog"
+            FAILED=1
+          fi
+        done
+        if [ $FAILED -eq 1 ]; then
+          echo "Some tests failed"
+          exit 1
+        fi
+        echo "All tests passed" 
