@@ -19,8 +19,8 @@ Output
 */
 
 #include <algorithm>
-#include <climits>
 #include <iostream>
+#include <limits>
 #include <vector>
 
 using std::cin;
@@ -28,9 +28,10 @@ using std::cout;
 using std::endl;
 using std::vector;
 
+const long long INF = std::numeric_limits<long long>::max();
+
 long long find_max_even_subsequence(const vector<long long>& numbers)
 {
-    const long long INF = 1e18;
     long long max_weight = -INF;
     long long min_odd_sum = INF;
     long long min_even_sum = 0;
@@ -65,7 +66,7 @@ int main()
     }
 
     long long result = find_max_even_subsequence(numbers);
-    if (result == -1e18) {
+    if (result == -INF) {
         return 1;
     } else {
         cout << result << endl;
