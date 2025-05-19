@@ -10,7 +10,7 @@ jobs:
     name: Build on Windows
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Install Visual Studio Build Tools
       uses: ilammy/msvc-dev-cmd@v1
       with:
@@ -33,19 +33,20 @@ jobs:
       run: |
         cl /std:c++17 /W4 /O2 /EHsc /Fo"build\" /Fe"build\test.exe" tests\test.cpp tests\test_runner.cpp
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: windows-build
         path: build/
+        retention-days: 5
 
   test:
     name: Test on Windows
     needs: build
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Download build artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: windows-build
         path: build
