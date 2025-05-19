@@ -66,30 +66,37 @@ jobs:
     - name: Run tests
       shell: cmd
       run: |
-        set FAILED=0
-        set TOTAL_FAILED=0
-        set TOTAL_TESTS=0
+        @echo off
+        setlocal EnableDelayedExpansion
+        
+        set "FAILED=0"
+        set "TOTAL_FAILED=0"
+        set "TOTAL_TESTS=0"
+        
         for /d %%w in (src\week*) do (
           for %%p in ("%%w\*.cpp") do (
             echo.
             echo Testing %%~nxw/%%~np...
             build\test.exe %%~nxw %%~np
-            set TEST_RESULT=%ERRORLEVEL%
-            set /a TOTAL_FAILED+=%TEST_RESULT%
-            set /a TOTAL_TESTS+=1
-            if %TEST_RESULT% gtr 0 (
-              echo Test failed for %%~nxw/%%~np with %TEST_RESULT% failures
-              set FAILED=1
+            set "TEST_RESULT=!ERRORLEVEL!"
+            set /a "TOTAL_FAILED+=!TEST_RESULT!"
+            set /a "TOTAL_TESTS+=1"
+            
+            if !TEST_RESULT! gtr 0 (
+              echo Test failed for %%~nxw/%%~np with !TEST_RESULT! failures
+              set "FAILED=1"
             ) else (
               echo Test passed for %%~nxw/%%~np
             )
           )
         )
+        
         echo.
         echo Test Summary:
-        echo Total Programs Tested: %TOTAL_TESTS%
-        echo Total Test Failures: %TOTAL_FAILED%
-        if %FAILED%==1 (
+        echo Total Programs Tested: !TOTAL_TESTS!
+        echo Total Test Failures: !TOTAL_FAILED!
+        
+        if !FAILED!==1 (
           echo Some tests failed
           exit /b 1
         )
