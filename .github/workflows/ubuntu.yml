@@ -45,17 +45,28 @@ jobs:
       run: |
         chmod +x build/test
         FAILED=0
+        TOTAL_FAILED=0
+        TOTAL_TESTS=0
         for src in src/week*/*.cpp; do
           week=$(basename $(dirname "$src"))
           prog=$(basename "$src" .cpp)
           echo
           echo "Testing $week/$prog..."
           make test WEEK=$week PROGRAM=$prog
-          if [ $? -ne 0 ]; then
-            echo "Test failed for $week/$prog"
+          TEST_RESULT=$?
+          TOTAL_FAILED=$((TOTAL_FAILED + TEST_RESULT))
+          TOTAL_TESTS=$((TOTAL_TESTS + 1))
+          if [ $TEST_RESULT -ne 0 ]; then
+            echo "Test failed for $week/$prog with $TEST_RESULT failures"
             FAILED=1
+          else
+            echo "Test passed for $week/$prog"
           fi
         done
+        echo
+        echo "Test Summary:"
+        echo "Total Programs Tested: $TOTAL_TESTS"
+        echo "Total Test Failures: $TOTAL_FAILED"
         if [ $FAILED -eq 1 ]; then
           echo "Some tests failed"
           exit 1

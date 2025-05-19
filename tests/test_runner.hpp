@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -12,8 +13,12 @@ public:
     };
 
     TestRunner(const std::string& week, const std::string& program);
-    bool run_all_tests();
+    int run_all_tests();
     void print_summary() const;
+    bool has_failures() const
+    {
+        return std::any_of(results.begin(), results.end(), [](const TestResult& r) { return !r.passed; });
+    }
 
 private:
     std::string week_dir;

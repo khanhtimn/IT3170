@@ -35,13 +35,13 @@ TestRunner::TestRunner(const std::string& week, const std::string& program)
 #endif
 }
 
-bool TestRunner::run_all_tests()
+int TestRunner::run_all_tests()
 {
     std::filesystem::path test_dir = std::filesystem::path("tests") / week_dir / program_name;
 
     if (!std::filesystem::exists(test_dir)) {
         std::cerr << colors::red << "Error: Test directory not found: " << test_dir << colors::reset << std::endl;
-        return false;
+        return 1;
     }
 
     std::vector<std::filesystem::path> test_files;
@@ -53,7 +53,7 @@ bool TestRunner::run_all_tests()
 
     if (test_files.empty()) {
         std::cerr << colors::yellow << "Warning: No test files found in " << test_dir << colors::reset << std::endl;
-        return false;
+        return 1;
     }
 
     std::sort(test_files.begin(), test_files.end());
@@ -65,7 +65,7 @@ bool TestRunner::run_all_tests()
         run_test(test_file.string());
     }
 
-    return true;
+    return std::count_if(results.begin(), results.end(), [](const TestResult& r) { return !r.passed; });
 }
 
 void TestRunner::run_test(const std::string& test_file)
