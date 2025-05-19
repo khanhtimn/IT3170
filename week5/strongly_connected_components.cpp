@@ -73,17 +73,14 @@ int count_strongly_connected_components(const vector<vector<int>>& graph,
     vector<int> finish_order;
     int num_components = 0;
 
-    // First DFS to get finish order
     for (int i = 1; i <= num_vertices; ++i) {
         if (!visited[i]) {
             dfs_first(i, graph, visited, finish_order);
         }
     }
 
-    // Reset visited array
     std::fill(visited.begin(), visited.end(), false);
 
-    // Second DFS on transpose graph
     for (auto it = finish_order.rbegin(); it != finish_order.rend(); ++it) {
         if (!visited[*it]) {
             dfs_second(*it, transpose, visited);
