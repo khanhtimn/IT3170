@@ -92,9 +92,6 @@ void TestRunner::run_test(const std::string& test_file)
     } else {
         std::cout << colors::red << "[  FAILED  ]" << colors::reset << " " << result.test_name << "\n";
 
-        std::cout << "Input:\n";
-        std::cout << input << "\n\n";
-
         std::cout << "Expected: \"" << result.expected << "\"\n";
         std::cout << "Actual:   \"" << result.actual << "\"\n\n";
     }
