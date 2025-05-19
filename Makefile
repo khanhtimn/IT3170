@@ -4,8 +4,8 @@ ifeq ($(OS),Windows_NT)
     RM = rmdir /s /q
     MKDIR = mkdir
     CFLAGS = /std:c++17 /W4 /O2 /EHsc
-    COMPILE = $(CC) $(CFLAGS) /Fe:"$@" /Fo:"$(dir $@)" $<
-    LINK = $(CC) $(CFLAGS) /Fe:"$@" /Fo:"$(dir $@)" $^
+    COMPILE = $(CC) $(CFLAGS) /Fo"$(dir $@)" /Fe"$@" $<
+    LINK = $(CC) $(CFLAGS) /Fo"$(dir $@)" /Fe"$@" $^
 else
     CC = gcc
     EXE =
@@ -34,7 +34,7 @@ $(BUILD_DIR)/%$(EXE): $(SRC_DIR)/%.cpp
 	@$(MKDIR) "$(dir $@)" 2>nul || exit 0
 	@echo "Compiling $<..."
 ifeq ($(OS),Windows_NT)
-	@$(CC) $(CFLAGS) /Fe:"$@" /Fo:"$(dir $@)" $<
+	@$(COMPILE)
 else
 	@$(COMPILE)
 endif
@@ -43,7 +43,7 @@ $(TEST_EXE): $(TEST_DIR)/test.cpp $(TEST_DIR)/test_runner.cpp
 	@$(MKDIR) "$(dir $@)" 2>nul || exit 0
 	@echo "Compiling test framework..."
 ifeq ($(OS),Windows_NT)
-	@$(CC) $(CFLAGS) /Fe:"$@" /Fo:"$(dir $@)" $^
+	@$(LINK)
 else
 	@$(LINK)
 endif
@@ -67,7 +67,7 @@ endif
 .PHONY: clean
 clean:
 ifeq ($(OS),Windows_NT)
-	@if exist $(BUILD_DIR) echo "Cleaning $(BUILD_DIR)..." && $(RM) $(BUILD_DIR)
+	@if exist $(BUILD_DIR) (echo "Cleaning $(BUILD_DIR)..." && $(RM) $(BUILD_DIR))
 	@if exist $(TEST_DIR) for /r $(TEST_DIR) %%f in (*.out) do del "%%f"
 else
 	@if [ -d "$(BUILD_DIR)" ]; then \
