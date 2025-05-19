@@ -37,83 +37,68 @@ using std::cout;
 using std::endl;
 using std::vector;
 
-class Graph {
-private:
-    vector<vector<int>> adj;
-    vector<int> discovery_time;
-    vector<int> low_value;
-    vector<int> parent;
-    vector<bool> is_articulation_point;
-    int num_vertices;
-    int num_bridges;
-    int current_time;
+void dfs(int vertex,
+    const vector<vector<int>>& adj,
+    vector<int>& discovery_time,
+    vector<int>& low_value,
+    vector<int>& parent,
+    vector<bool>& is_articulation_point,
+    int& num_bridges,
+    int& current_time)
+{
+    discovery_time[vertex] = low_value[vertex] = ++current_time;
+    int num_children = 0;
 
-    void dfs(int vertex)
-    {
-        discovery_time[vertex] = low_value[vertex] = ++current_time;
-        int num_children = 0;
+    for (int neighbor : adj[vertex]) {
+        if (discovery_time[neighbor] == 0) {
+            num_children++;
+            parent[neighbor] = vertex;
+            dfs(neighbor, adj, discovery_time, low_value, parent,
+                is_articulation_point, num_bridges, current_time);
 
-        for (int neighbor : adj[vertex]) {
-            if (discovery_time[neighbor] == 0) {
-                num_children++;
-                parent[neighbor] = vertex;
-                dfs(neighbor);
+            low_value[vertex] = std::min(low_value[vertex], low_value[neighbor]);
 
-                low_value[vertex] = std::min(low_value[vertex], low_value[neighbor]);
-
-                if (discovery_time[vertex] < low_value[neighbor]) {
-                    num_bridges++;
-                }
-
-                if (parent[vertex] == vertex && num_children >= 2) {
-                    is_articulation_point[vertex] = true;
-                }
-                if (parent[vertex] != vertex && low_value[neighbor] >= discovery_time[vertex]) {
-                    is_articulation_point[vertex] = true;
-                }
-            } else if (parent[vertex] != neighbor) {
-                low_value[vertex] = std::min(low_value[vertex], discovery_time[neighbor]);
+            if (discovery_time[vertex] < low_value[neighbor]) {
+                num_bridges++;
             }
-        }
-    }
 
-public:
-    Graph(int vertices)
-        : num_vertices(vertices)
-        , num_bridges(0)
-        , current_time(0)
-    {
-        adj.resize(vertices + 1);
-        discovery_time.resize(vertices + 1, 0);
-        low_value.resize(vertices + 1, 0);
-        parent.resize(vertices + 1);
-        is_articulation_point.resize(vertices + 1, false);
-
-        for (int i = 1; i <= vertices; ++i) {
-            parent[i] = i;
-        }
-    }
-
-    void add_edge(int u, int v)
-    {
-        adj[u].push_back(v);
-        adj[v].push_back(u);
-    }
-
-    std::pair<int, int> find_articulation_points_and_bridges()
-    {
-        for (int i = 1; i <= num_vertices; ++i) {
-            if (discovery_time[i] == 0) {
-                dfs(i);
+            if (parent[vertex] == vertex && num_children >= 2) {
+                is_articulation_point[vertex] = true;
             }
+            if (parent[vertex] != vertex && low_value[neighbor] >= discovery_time[vertex]) {
+                is_articulation_point[vertex] = true;
+            }
+        } else if (parent[vertex] != neighbor) {
+            low_value[vertex] = std::min(low_value[vertex], discovery_time[neighbor]);
         }
-
-        int num_articulation_points = std::count(is_articulation_point.begin(),
-            is_articulation_point.end(), true);
-
-        return { num_articulation_points, num_bridges };
     }
-};
+}
+
+std::pair<int, int> find_articulation_points_and_bridges(const vector<vector<int>>& adj, int num_vertices)
+{
+    vector<int> discovery_time(num_vertices + 1, 0);
+    vector<int> low_value(num_vertices + 1, 0);
+    vector<int> parent(num_vertices + 1);
+    vector<bool> is_articulation_point(num_vertices + 1, false);
+    int num_bridges = 0;
+    int current_time = 0;
+
+    for (int i = 1; i <= num_vertices; ++i) {
+        parent[i] = i;
+    }
+
+    for (int i = 1; i <= num_vertices; ++i) {
+        if (discovery_time[i] == 0) {
+            dfs(i, adj, discovery_time, low_value, parent,
+                is_articulation_point, num_bridges, current_time);
+        }
+    }
+
+    int num_articulation_points = std::count(is_articulation_point.begin(),
+        is_articulation_point.end(), true);
+
+    return { num_articulation_points, num_bridges };
+}
 
 int main()
 {
@@ -123,15 +108,16 @@ int main()
     int num_vertices, num_edges;
     cin >> num_vertices >> num_edges;
 
-    Graph graph(num_vertices);
+    vector<vector<int>> adj(num_vertices + 1);
 
     for (int i = 0; i < num_edges; ++i) {
         int u, v;
         cin >> u >> v;
-        graph.add_edge(u, v);
+        adj[u].push_back(v);
+        adj[v].push_back(u);
     }
 
-    auto [num_articulation_points, num_bridges] = graph.find_articulation_points_and_bridges();
+    auto [num_articulation_points, num_bridges] = find_articulation_points_and_bridges(adj, num_vertices);
     cout << num_articulation_points << " " << num_bridges << endl;
 
     return 0;
