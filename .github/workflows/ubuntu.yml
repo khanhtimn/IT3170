@@ -49,7 +49,7 @@ jobs:
           prog=$(basename "$src" .cpp)
           echo
           echo "Testing $week/$prog..."
-          build/test "$week" "$prog"
+          make test WEEK=$week PROGRAM=$prog
           if [ $? -ne 0 ]; then
             echo "Test failed for $week/$prog"
             FAILED=1

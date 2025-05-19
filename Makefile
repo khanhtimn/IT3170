@@ -28,7 +28,7 @@ TARGETS = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%$(EXE),$(SOURCES))
 TEST_EXE = $(BUILD_DIR)/test$(EXE)
 
 .PHONY: all
-all: $(TARGETS)
+all: $(TARGETS) $(TEST_EXE)
 
 $(BUILD_DIR)/%$(EXE): $(SRC_DIR)/%.cpp
 	@$(MKDIR) "$(dir $@)" 2>nul || exit 0
