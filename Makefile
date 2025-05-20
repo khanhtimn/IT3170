@@ -27,12 +27,12 @@ SOURCES = $(foreach dir,$(WEEK_DIRS),$(wildcard $(dir)/*.cpp))
 TARGETS = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%$(EXE),$(SOURCES))
 TEST_EXE = $(BUILD_DIR)/test$(EXE)
 
-TEST_SOURCES = $(TEST_DIR)/test.cpp \
-               $(TEST_DIR)/test_runner.cpp \
-               $(TEST_DIR)/test_parser.cpp \
-               $(TEST_DIR)/test_result.cpp \
-               $(TEST_DIR)/output_formatter.cpp \
-               $(TEST_DIR)/process_executor.cpp
+TEST_SOURCES = $(SRC_DIR)/testing/test.cpp \
+               $(SRC_DIR)/testing/test_runner.cpp \
+               $(SRC_DIR)/testing/test_parser.cpp \
+               $(SRC_DIR)/testing/test_result.cpp \
+               $(SRC_DIR)/testing/output_formatter.cpp \
+               $(SRC_DIR)/testing/process_executor.cpp
 
 .PHONY: all
 all: $(TARGETS) $(TEST_EXE)
