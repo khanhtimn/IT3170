@@ -193,6 +193,8 @@ std::string TestRunner::run_program(const std::string& input)
         CloseHandle(piProcInfo.hThread);
         CloseHandle(hChildStdoutRd);
 #else
+        std::cout << colors::blue << "[DEBUG] Setting up pipes for Unix process" << colors::reset << std::endl;
+
         int pipe_in[2];
         int pipe_out[2];
 
@@ -201,6 +203,7 @@ std::string TestRunner::run_program(const std::string& input)
             return "";
         }
 
+        std::cout << colors::blue << "[DEBUG] Forking process" << colors::reset << std::endl;
         pid_t pid = fork();
         if (pid == -1) {
             close(pipe_in[0]);
@@ -212,25 +215,35 @@ std::string TestRunner::run_program(const std::string& input)
         }
 
         if (pid == 0) {
+            std::cout << colors::blue << "[DEBUG] Child process: Setting up I/O" << colors::reset << std::endl;
+
             close(pipe_in[1]);
             close(pipe_out[0]);
 
-            if (dup2(pipe_in[0], STDIN_FILENO) == -1 || dup2(pipe_out[1], STDOUT_FILENO) == -1) {
-                std::cerr << colors::red << "Error: Failed to redirect I/O" << colors::reset << std::endl;
+            if (dup2(pipe_in[0], STDIN_FILENO) == -1) {
+                std::cerr << colors::red << "Error: Failed to redirect stdin" << colors::reset << std::endl;
+                exit(1);
+            }
+            if (dup2(pipe_out[1], STDOUT_FILENO) == -1) {
+                std::cerr << colors::red << "Error: Failed to redirect stdout" << colors::reset << std::endl;
                 exit(1);
             }
 
             close(pipe_in[0]);
             close(pipe_out[1]);
 
+            std::cout << colors::blue << "[DEBUG] Child process: Executing " << abs_program_path << colors::reset << std::endl;
             execl(abs_program_path.c_str(), abs_program_path.c_str(), nullptr);
             std::cerr << colors::red << "Error: Failed to execute program" << colors::reset << std::endl;
             exit(1);
         }
 
+        std::cout << colors::blue << "[DEBUG] Parent process: Setting up I/O" << colors::reset << std::endl;
+
         close(pipe_in[0]);
         close(pipe_out[1]);
 
+        std::cout << colors::blue << "[DEBUG] Parent process: Writing input: " << input << colors::reset << std::endl;
         ssize_t written = write(pipe_in[1], input.c_str(), input.length());
         if (written == -1) {
             std::cerr << colors::red << "Error: Failed to write input" << colors::reset << std::endl;
@@ -240,6 +253,7 @@ std::string TestRunner::run_program(const std::string& input)
         }
         close(pipe_in[1]);
 
+        std::cout << colors::blue << "[DEBUG] Parent process: Reading output" << colors::reset << std::endl;
         result.clear();
         char buffer[4096];
         ssize_t bytes_read;
@@ -255,8 +269,11 @@ std::string TestRunner::run_program(const std::string& input)
             return "";
         }
 
-        if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
-            std::cerr << colors::yellow << "Warning: Program exited with status " << WEXITSTATUS(status) << colors::reset << std::endl;
+        if (WIFEXITED(status)) {
+            int exit_status = WEXITSTATUS(status);
+            if (exit_status != 0) {
+                std::cerr << colors::yellow << "Warning: Program exited with status " << exit_status << colors::reset << std::endl;
+            }
         }
 
         std::string normalized;
@@ -278,11 +295,12 @@ std::string TestRunner::run_program(const std::string& input)
             }
         }
 
-        while (!normalized.empty() && (normalized.back() == ' ' || normalized.back() == '\t')) {
+        while (!normalized.empty() && (normalized.back() == ' ' || normalized.back() == '\t' || normalized.back() == '\n' || normalized.back() == '\r')) {
             normalized.pop_back();
         }
 
         result = std::move(normalized);
+        std::cout << colors::blue << "[DEBUG] Parent process: Final output: " << result << colors::reset << std::endl;
 #endif
 
     } catch (const std::exception& e) {
