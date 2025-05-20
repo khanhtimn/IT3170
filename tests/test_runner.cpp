@@ -196,19 +196,32 @@ std::string TestRunner::run_program(const std::string& input)
 #else
         std::cout << colors::blue << "[DEBUG] Setting up pipes for Unix process" << colors::reset << std::endl;
 
-        int pipe_in[2];
-        int pipe_out[2];
+        std::string temp_dir = fs::temp_directory_path().string();
+        std::string input_file = (fs::path(temp_dir) / "test_input.txt").string();
+        std::string output_file = (fs::path(temp_dir) / "test_output.txt").string();
 
-        if (pipe(pipe_in) == -1 || pipe(pipe_out) == -1) {
-            std::cerr << colors::red << "Error: Failed to create pipes" << colors::reset << std::endl;
+        {
+            std::ofstream in(input_file, std::ios::binary);
+            if (!in) {
+                std::cerr << colors::red << "Error: Failed to create input file" << colors::reset << std::endl;
+                return "";
+            }
+            in << input;
+            if (!in) {
+                std::cerr << colors::red << "Error: Failed to write input file" << colors::reset << std::endl;
+                return "";
+            }
+        }
+
+        int pipe_out[2];
+        if (pipe(pipe_out) == -1) {
+            std::cerr << colors::red << "Error: Failed to create output pipe" << colors::reset << std::endl;
             return "";
         }
 
         std::cout << colors::blue << "[DEBUG] Forking process" << colors::reset << std::endl;
         pid_t pid = fork();
         if (pid == -1) {
-            close(pipe_in[0]);
-            close(pipe_in[1]);
             close(pipe_out[0]);
             close(pipe_out[1]);
             std::cerr << colors::red << "Error: Failed to create process" << colors::reset << std::endl;
@@ -216,19 +229,23 @@ std::string TestRunner::run_program(const std::string& input)
         }
 
         if (pid == 0) {
-            close(pipe_in[1]);
             close(pipe_out[0]);
 
-            if (dup2(pipe_in[0], STDIN_FILENO) == -1) {
+            int input_fd = open(input_file.c_str(), O_RDONLY);
+            if (input_fd == -1) {
+                std::cerr << colors::red << "Error: Failed to open input file" << colors::reset << std::endl;
+                exit(1);
+            }
+            if (dup2(input_fd, STDIN_FILENO) == -1) {
                 std::cerr << colors::red << "Error: Failed to redirect stdin" << colors::reset << std::endl;
                 exit(1);
             }
+            close(input_fd);
+
             if (dup2(pipe_out[1], STDOUT_FILENO) == -1) {
                 std::cerr << colors::red << "Error: Failed to redirect stdout" << colors::reset << std::endl;
                 exit(1);
             }
-
-            close(pipe_in[0]);
             close(pipe_out[1]);
 
             std::cout.setstate(std::ios::failbit);
@@ -239,29 +256,7 @@ std::string TestRunner::run_program(const std::string& input)
             exit(1);
         }
 
-        close(pipe_in[0]);
         close(pipe_out[1]);
-
-        std::cout << colors::blue << "[DEBUG] Parent process: Writing input: " << input << colors::reset << std::endl;
-
-        ssize_t written = write(pipe_in[1], input.c_str(), input.length());
-        if (written == -1) {
-            std::cerr << colors::red << "Error: Failed to write input" << colors::reset << std::endl;
-            close(pipe_in[1]);
-            close(pipe_out[0]);
-            return "";
-        }
-
-        if (!input.empty() && input.back() != '\n') {
-            if (write(pipe_in[1], "\n", 1) == -1) {
-                std::cerr << colors::red << "Error: Failed to write final newline" << colors::reset << std::endl;
-                close(pipe_in[1]);
-                close(pipe_out[0]);
-                return "";
-            }
-        }
-
-        close(pipe_in[1]);
 
         std::cout << colors::blue << "[DEBUG] Parent process: Reading output" << colors::reset << std::endl;
         result.clear();
@@ -284,6 +279,13 @@ std::string TestRunner::run_program(const std::string& input)
             if (exit_status != 0) {
                 std::cerr << colors::yellow << "Warning: Program exited with status " << exit_status << colors::reset << std::endl;
             }
+        }
+
+        try {
+            fs::remove(input_file);
+            fs::remove(output_file);
+        } catch (const std::exception& e) {
+            std::cerr << colors::yellow << "Warning: Failed to clean up temporary files: " << e.what() << colors::reset << std::endl;
         }
 
         std::string normalized;
@@ -316,13 +318,6 @@ std::string TestRunner::run_program(const std::string& input)
     } catch (const std::exception& e) {
         std::cerr << colors::red << "Error: " << e.what() << colors::reset << std::endl;
         return "";
-    }
-
-    try {
-        fs::remove(input_file);
-        fs::remove(output_file);
-    } catch (const std::exception& e) {
-        std::cerr << colors::yellow << "Warning: Failed to clean up temporary files: " << e.what() << colors::reset << std::endl;
     }
 
     return result;
