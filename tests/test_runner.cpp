@@ -193,72 +193,96 @@ std::string TestRunner::run_program(const std::string& input)
         CloseHandle(piProcInfo.hThread);
         CloseHandle(hChildStdoutRd);
 #else
-        int input_fd = open(input_file.c_str(), O_RDONLY);
-        if (input_fd == -1) {
-            std::cerr << colors::red << "Error: Failed to open input file" << colors::reset << std::endl;
-            return "";
-        }
+        int pipe_in[2];
+        int pipe_out[2];
 
-        int output_fd = open(output_file.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
-        if (output_fd == -1) {
-            close(input_fd);
-            std::cerr << colors::red << "Error: Failed to create output file" << colors::reset << std::endl;
+        if (pipe(pipe_in) == -1 || pipe(pipe_out) == -1) {
+            std::cerr << colors::red << "Error: Failed to create pipes" << colors::reset << std::endl;
             return "";
         }
 
         pid_t pid = fork();
         if (pid == -1) {
-            close(input_fd);
-            close(output_fd);
+            close(pipe_in[0]);
+            close(pipe_in[1]);
+            close(pipe_out[0]);
+            close(pipe_out[1]);
             std::cerr << colors::red << "Error: Failed to create process" << colors::reset << std::endl;
             return "";
         }
 
         if (pid == 0) {
-            if (dup2(input_fd, STDIN_FILENO) == -1 || dup2(output_fd, STDOUT_FILENO) == -1) {
+            close(pipe_in[1]);
+            close(pipe_out[0]);
+
+            if (dup2(pipe_in[0], STDIN_FILENO) == -1 || dup2(pipe_out[1], STDOUT_FILENO) == -1) {
                 std::cerr << colors::red << "Error: Failed to redirect I/O" << colors::reset << std::endl;
                 exit(1);
             }
 
-            close(input_fd);
-            close(output_fd);
+            close(pipe_in[0]);
+            close(pipe_out[1]);
 
             execl(abs_program_path.c_str(), abs_program_path.c_str(), nullptr);
             std::cerr << colors::red << "Error: Failed to execute program" << colors::reset << std::endl;
             exit(1);
-        } else {
-            close(input_fd);
-            close(output_fd);
-
-            int status;
-            if (waitpid(pid, &status, 0) == -1) {
-                std::cerr << colors::red << "Error: Failed to wait for program" << colors::reset << std::endl;
-                return "";
-            }
-
-            if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
-                std::cerr << colors::yellow << "Warning: Program exited with status " << WEXITSTATUS(status) << colors::reset << std::endl;
-            }
         }
 
-        std::ifstream out(output_file, std::ios::binary);
-        if (!out) {
-            std::cerr << colors::red << "Error: Failed to read output file" << colors::reset << std::endl;
+        close(pipe_in[0]);
+        close(pipe_out[1]);
+
+        ssize_t written = write(pipe_in[1], input.c_str(), input.length());
+        if (written == -1) {
+            std::cerr << colors::red << "Error: Failed to write input" << colors::reset << std::endl;
+            close(pipe_in[1]);
+            close(pipe_out[0]);
+            return "";
+        }
+        close(pipe_in[1]);
+
+        result.clear();
+        char buffer[4096];
+        ssize_t bytes_read;
+        while ((bytes_read = read(pipe_out[0], buffer, sizeof(buffer) - 1)) > 0) {
+            buffer[bytes_read] = '\0';
+            result.append(buffer, bytes_read);
+        }
+        close(pipe_out[0]);
+
+        int status;
+        if (waitpid(pid, &status, 0) == -1) {
+            std::cerr << colors::red << "Error: Failed to wait for program" << colors::reset << std::endl;
             return "";
         }
 
-        result.clear();
-        std::string line;
-        while (std::getline(out, line)) {
-            if (!result.empty()) {
-                result += "\n";
-            }
-            result += line;
+        if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
+            std::cerr << colors::yellow << "Warning: Program exited with status " << WEXITSTATUS(status) << colors::reset << std::endl;
         }
 
-        while (!result.empty() && (result.back() == ' ' || result.back() == '\t')) {
-            result.pop_back();
+        std::string normalized;
+        normalized.reserve(result.length());
+        bool last_was_cr = false;
+
+        for (char c : result) {
+            if (c == '\r') {
+                last_was_cr = true;
+            } else if (c == '\n') {
+                normalized += '\n';
+                last_was_cr = false;
+            } else {
+                if (last_was_cr) {
+                    normalized += '\n';
+                }
+                normalized += c;
+                last_was_cr = false;
+            }
         }
+
+        while (!normalized.empty() && (normalized.back() == ' ' || normalized.back() == '\t')) {
+            normalized.pop_back();
+        }
+
+        result = std::move(normalized);
 #endif
 
     } catch (const std::exception& e) {
