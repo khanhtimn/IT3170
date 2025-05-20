@@ -196,11 +196,6 @@ std::string TestRunner::run_program(const std::string& input)
 #else
         std::cout << colors::blue << "[DEBUG] Setting up Unix process" << colors::reset << std::endl;
 
-        if (chmod(abs_program_path.c_str(), S_IRUSR | S_IWUSR | S_IXUSR) == -1) {
-            std::cerr << colors::red << "Error: Failed to set execute permissions" << colors::reset << std::endl;
-            return "";
-        }
-
         std::string cmd = abs_program_path.string() + " < " + input_file;
         std::cout << colors::blue << "[DEBUG] Executing command: " << cmd << colors::reset << std::endl;
 
