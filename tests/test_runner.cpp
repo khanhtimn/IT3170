@@ -109,8 +109,24 @@ std::string TestRunner::run_program(const std::string& input)
     }
 
     std::string result;
+    std::string temp_dir = fs::temp_directory_path().string();
+    std::string input_file = (fs::path(temp_dir) / "test_input.txt").string();
+    std::string output_file = (fs::path(temp_dir) / "test_output.txt").string();
 
     try {
+        {
+            std::ofstream in(input_file, std::ios::binary);
+            if (!in) {
+                std::cerr << colors::red << "Error: Failed to create input file" << colors::reset << std::endl;
+                return "";
+            }
+            in << input;
+            if (!in) {
+                std::cerr << colors::red << "Error: Failed to write input file" << colors::reset << std::endl;
+                return "";
+            }
+        }
+
 #ifdef _WIN32
         SECURITY_ATTRIBUTES saAttr;
         saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -183,22 +199,6 @@ std::string TestRunner::run_program(const std::string& input)
         if (chmod(abs_program_path.c_str(), S_IRUSR | S_IWUSR | S_IXUSR) == -1) {
             std::cerr << colors::red << "Error: Failed to set execute permissions" << colors::reset << std::endl;
             return "";
-        }
-
-        std::string temp_dir = fs::temp_directory_path().string();
-        std::string input_file = (fs::path(temp_dir) / "test_input.txt").string();
-
-        {
-            std::ofstream in(input_file, std::ios::binary);
-            if (!in) {
-                std::cerr << colors::red << "Error: Failed to create input file" << colors::reset << std::endl;
-                return "";
-            }
-            in << input;
-            if (!in) {
-                std::cerr << colors::red << "Error: Failed to write input file" << colors::reset << std::endl;
-                return "";
-            }
         }
 
         std::string cmd = abs_program_path.string() + " < " + input_file;
