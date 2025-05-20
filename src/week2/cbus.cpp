@@ -32,19 +32,21 @@ using std::vector;
 int n, k;
 vector<vector<int>> c;
 vector<int> x;
-vector<bool> visited;
-int load, cost = 0;
-int min_cost, min_edge = INT_MAX;
+vector<bool> appear;
+int load = 0;
+int cost = 0;
+int c_min = INT_MAX;
+int min_edge = INT_MAX;
 
 bool is_valid(int v)
 {
-    if (visited[v])
+    if (appear[v])
         return false;
 
     if (v <= n) {
         return load < k;
     } else {
-        return visited[v - n];
+        return appear[v - n];
     }
 }
 
@@ -52,8 +54,8 @@ void try_route(int pos)
 {
     if (pos > 2 * n) {
         int total_cost = cost + c[x[pos - 1]][0];
-        if (total_cost < min_cost) {
-            min_cost = total_cost;
+        if (total_cost < c_min) {
+            c_min = total_cost;
         }
         return;
     }
@@ -61,7 +63,7 @@ void try_route(int pos)
     for (int v = 1; v <= 2 * n; v++) {
         if (is_valid(v)) {
             x[pos] = v;
-            visited[v] = true;
+            appear[v] = true;
 
             int old_cost = cost;
             cost += c[x[pos - 1]][v];
@@ -72,13 +74,12 @@ void try_route(int pos)
                 load--;
 
             int lower_bound = cost + (2 * n + 1 - pos) * min_edge;
-            if (lower_bound < min_cost) {
+            if (lower_bound < c_min) {
                 try_route(pos + 1);
             }
 
-            visited[v] = false;
+            appear[v] = false;
             cost = old_cost;
-
             if (v <= n)
                 load--;
             else
@@ -93,7 +94,7 @@ int main()
 
     c.resize(2 * n + 1, vector<int>(2 * n + 1));
     x.resize(2 * n + 1);
-    visited.resize(2 * n + 1, false);
+    appear.resize(2 * n + 1, false);
 
     for (int i = 0; i <= 2 * n; i++) {
         for (int j = 0; j <= 2 * n; j++) {
@@ -108,7 +109,7 @@ int main()
 
     try_route(1);
 
-    std::cout << min_cost << std::endl;
+    std::cout << c_min << std::endl;
 
     return 0;
 }
