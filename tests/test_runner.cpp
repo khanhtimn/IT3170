@@ -238,6 +238,7 @@ std::string TestRunner::run_program(const std::string& input)
             }
             close(stdin_pipe[1]);
 
+            result.clear();
             char buffer[4096];
             ssize_t bytes_read;
             while ((bytes_read = read(stdout_pipe[0], buffer, sizeof(buffer) - 1)) > 0) {
@@ -254,6 +255,10 @@ std::string TestRunner::run_program(const std::string& input)
 
             if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
                 std::cerr << colors::yellow << "Warning: Program exited with status " << WEXITSTATUS(status) << colors::reset << std::endl;
+            }
+
+            while (!result.empty() && (result.back() == '\n' || result.back() == '\r' || result.back() == ' ')) {
+                result.pop_back();
             }
         }
 #endif
