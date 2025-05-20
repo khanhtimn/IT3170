@@ -109,24 +109,8 @@ std::string TestRunner::run_program(const std::string& input)
     }
 
     std::string result;
-    std::string temp_dir = fs::temp_directory_path().string();
-    std::string input_file = (fs::path(temp_dir) / "test_input.txt").string();
-    std::string output_file = (fs::path(temp_dir) / "test_output.txt").string();
 
     try {
-        {
-            std::ofstream in(input_file, std::ios::binary);
-            if (!in) {
-                std::cerr << colors::red << "Error: Failed to create input file" << colors::reset << std::endl;
-                return "";
-            }
-            in << input;
-            if (!in) {
-                std::cerr << colors::red << "Error: Failed to write input file" << colors::reset << std::endl;
-                return "";
-            }
-        }
-
 #ifdef _WIN32
         SECURITY_ATTRIBUTES saAttr;
         saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -194,11 +178,10 @@ std::string TestRunner::run_program(const std::string& input)
         CloseHandle(piProcInfo.hThread);
         CloseHandle(hChildStdoutRd);
 #else
-        std::cout << colors::blue << "[DEBUG] Setting up pipes for Unix process" << colors::reset << std::endl;
+        std::cout << colors::blue << "[DEBUG] Setting up Unix process" << colors::reset << std::endl;
 
         std::string temp_dir = fs::temp_directory_path().string();
         std::string input_file = (fs::path(temp_dir) / "test_input.txt").string();
-        std::string output_file = (fs::path(temp_dir) / "test_output.txt").string();
 
         {
             std::ofstream in(input_file, std::ios::binary);
@@ -213,64 +196,25 @@ std::string TestRunner::run_program(const std::string& input)
             }
         }
 
-        int pipe_out[2];
-        if (pipe(pipe_out) == -1) {
-            std::cerr << colors::red << "Error: Failed to create output pipe" << colors::reset << std::endl;
-            return "";
-        }
+        std::string cmd = abs_program_path.string() + " < " + input_file;
+        std::cout << colors::blue << "[DEBUG] Executing command: " << cmd << colors::reset << std::endl;
 
-        std::cout << colors::blue << "[DEBUG] Forking process" << colors::reset << std::endl;
-        pid_t pid = fork();
-        if (pid == -1) {
-            close(pipe_out[0]);
-            close(pipe_out[1]);
-            std::cerr << colors::red << "Error: Failed to create process" << colors::reset << std::endl;
-            return "";
-        }
-
-        if (pid == 0) {
-            close(pipe_out[0]);
-
-            int input_fd = open(input_file.c_str(), O_RDONLY);
-            if (input_fd == -1) {
-                std::cerr << colors::red << "Error: Failed to open input file" << colors::reset << std::endl;
-                exit(1);
-            }
-            if (dup2(input_fd, STDIN_FILENO) == -1) {
-                std::cerr << colors::red << "Error: Failed to redirect stdin" << colors::reset << std::endl;
-                exit(1);
-            }
-            close(input_fd);
-
-            if (dup2(pipe_out[1], STDOUT_FILENO) == -1) {
-                std::cerr << colors::red << "Error: Failed to redirect stdout" << colors::reset << std::endl;
-                exit(1);
-            }
-            close(pipe_out[1]);
-
-            std::cout.setstate(std::ios::failbit);
-            std::cerr.setstate(std::ios::failbit);
-
-            execl(abs_program_path.c_str(), abs_program_path.c_str(), nullptr);
+        FILE* pipe = popen(cmd.c_str(), "r");
+        if (!pipe) {
             std::cerr << colors::red << "Error: Failed to execute program" << colors::reset << std::endl;
-            exit(1);
+            return "";
         }
 
-        close(pipe_out[1]);
-
-        std::cout << colors::blue << "[DEBUG] Parent process: Reading output" << colors::reset << std::endl;
+        std::cout << colors::blue << "[DEBUG] Reading output" << colors::reset << std::endl;
         result.clear();
         char buffer[4096];
-        ssize_t bytes_read;
-        while ((bytes_read = read(pipe_out[0], buffer, sizeof(buffer) - 1)) > 0) {
-            buffer[bytes_read] = '\0';
-            result.append(buffer, bytes_read);
+        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+            result.append(buffer);
         }
-        close(pipe_out[0]);
 
-        int status;
-        if (waitpid(pid, &status, 0) == -1) {
-            std::cerr << colors::red << "Error: Failed to wait for program" << colors::reset << std::endl;
+        int status = pclose(pipe);
+        if (status == -1) {
+            std::cerr << colors::red << "Error: Failed to close process" << colors::reset << std::endl;
             return "";
         }
 
@@ -283,9 +227,8 @@ std::string TestRunner::run_program(const std::string& input)
 
         try {
             fs::remove(input_file);
-            fs::remove(output_file);
         } catch (const std::exception& e) {
-            std::cerr << colors::yellow << "Warning: Failed to clean up temporary files: " << e.what() << colors::reset << std::endl;
+            std::cerr << colors::yellow << "Warning: Failed to clean up temporary file: " << e.what() << colors::reset << std::endl;
         }
 
         std::string normalized;
@@ -312,7 +255,7 @@ std::string TestRunner::run_program(const std::string& input)
         }
 
         result = std::move(normalized);
-        std::cout << colors::blue << "[DEBUG] Parent process: Final output: " << result << colors::reset << std::endl;
+        std::cout << colors::blue << "[DEBUG] Final output: " << result << colors::reset << std::endl;
 #endif
 
     } catch (const std::exception& e) {
