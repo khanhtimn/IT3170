@@ -12,9 +12,9 @@ Bài tập trên trang hustack.soict.ai của lớp IT3170 - Thuật toán ứng
 
 ## Chạy trên máy local
 ### Windows
-1. Cài đặt Visual Studio Build Tools
+1. Cài đặt [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/?q=build+tools)
 2. Cài đặt Make (Tớ thích dùng [Scoop](https://github.com/ScoopInstaller/Scoop): `scoop install make`)
-3. Biên dịch và chạy:
+3. Biên dịch và chạy (trong Visual Studio Developer Command Prompt/PowerShell):
    ```bash
    make clean
    make all
@@ -31,7 +31,7 @@ Bài tập trên trang hustack.soict.ai của lớp IT3170 - Thuật toán ứng
    make all
    ```
 ### macOS
-1. Cài đặt Xcode Command Line Tools (bao gồm Clang và Make):
+1. Cài đặt Xcode Command Line Tools:
    ```bash
    xcode-select --install
    ```
