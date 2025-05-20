@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -244,13 +245,27 @@ std::string TestRunner::run_program(const std::string& input)
         close(pipe_out[1]);
 
         std::cout << colors::blue << "[DEBUG] Parent process: Writing input: " << input << colors::reset << std::endl;
-        ssize_t written = write(pipe_in[1], input.c_str(), input.length());
-        if (written == -1) {
-            std::cerr << colors::red << "Error: Failed to write input" << colors::reset << std::endl;
-            close(pipe_in[1]);
-            close(pipe_out[0]);
-            return "";
+
+        std::istringstream input_stream(input);
+        std::string line;
+        while (std::getline(input_stream, line)) {
+            ssize_t written = write(pipe_in[1], line.c_str(), line.length());
+            if (written == -1) {
+                std::cerr << colors::red << "Error: Failed to write input line" << colors::reset << std::endl;
+                close(pipe_in[1]);
+                close(pipe_out[0]);
+                return "";
+            }
+            if (!input_stream.eof()) {
+                if (write(pipe_in[1], "\n", 1) == -1) {
+                    std::cerr << colors::red << "Error: Failed to write newline" << colors::reset << std::endl;
+                    close(pipe_in[1]);
+                    close(pipe_out[0]);
+                    return "";
+                }
+            }
         }
+
         close(pipe_in[1]);
 
         std::cout << colors::blue << "[DEBUG] Parent process: Reading output" << colors::reset << std::endl;
