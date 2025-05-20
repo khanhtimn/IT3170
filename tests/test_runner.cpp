@@ -180,6 +180,11 @@ std::string TestRunner::run_program(const std::string& input)
 #else
         std::cout << colors::blue << "[DEBUG] Setting up Unix process" << colors::reset << std::endl;
 
+        if (chmod(abs_program_path.c_str(), S_IRUSR | S_IWUSR | S_IXUSR) == -1) {
+            std::cerr << colors::red << "Error: Failed to set execute permissions" << colors::reset << std::endl;
+            return "";
+        }
+
         std::string temp_dir = fs::temp_directory_path().string();
         std::string input_file = (fs::path(temp_dir) / "test_input.txt").string();
 
