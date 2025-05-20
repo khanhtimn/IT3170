@@ -244,41 +244,17 @@ std::string TestRunner::run_program(const std::string& input)
 
         std::cout << colors::blue << "[DEBUG] Parent process: Writing input: " << input << colors::reset << std::endl;
 
-        size_t pos = 0;
-        size_t prev = 0;
-        while ((pos = input.find('\n', prev)) != std::string::npos) {
-            std::string line = input.substr(prev, pos - prev);
-            if (!line.empty() && line.back() == '\r') {
-                line.pop_back();
-            }
-
-            ssize_t written = write(pipe_in[1], line.c_str(), line.length());
-            if (written == -1) {
-                std::cerr << colors::red << "Error: Failed to write input line" << colors::reset << std::endl;
-                close(pipe_in[1]);
-                close(pipe_out[0]);
-                return "";
-            }
-
-            if (write(pipe_in[1], "\n", 1) == -1) {
-                std::cerr << colors::red << "Error: Failed to write newline" << colors::reset << std::endl;
-                close(pipe_in[1]);
-                close(pipe_out[0]);
-                return "";
-            }
-
-            prev = pos + 1;
+        ssize_t written = write(pipe_in[1], input.c_str(), input.length());
+        if (written == -1) {
+            std::cerr << colors::red << "Error: Failed to write input" << colors::reset << std::endl;
+            close(pipe_in[1]);
+            close(pipe_out[0]);
+            return "";
         }
 
-        if (prev < input.length()) {
-            std::string line = input.substr(prev);
-            if (!line.empty() && line.back() == '\r') {
-                line.pop_back();
-            }
-
-            ssize_t written = write(pipe_in[1], line.c_str(), line.length());
-            if (written == -1) {
-                std::cerr << colors::red << "Error: Failed to write input line" << colors::reset << std::endl;
+        if (!input.empty() && input.back() != '\n') {
+            if (write(pipe_in[1], "\n", 1) == -1) {
+                std::cerr << colors::red << "Error: Failed to write final newline" << colors::reset << std::endl;
                 close(pipe_in[1]);
                 close(pipe_out[0]);
                 return "";
