@@ -194,10 +194,8 @@ std::string TestRunner::run_program(const std::string& input)
         CloseHandle(piProcInfo.hThread);
         CloseHandle(hChildStdoutRd);
 #else
-        std::cout << colors::blue << "[DEBUG] Setting up Unix process" << colors::reset << std::endl;
 
         std::string cmd = abs_program_path.string() + " < " + input_file;
-        std::cout << colors::blue << "[DEBUG] Executing command: " << cmd << colors::reset << std::endl;
 
         FILE* pipe = popen(cmd.c_str(), "r");
         if (!pipe) {
@@ -205,7 +203,6 @@ std::string TestRunner::run_program(const std::string& input)
             return "";
         }
 
-        std::cout << colors::blue << "[DEBUG] Reading output" << colors::reset << std::endl;
         result.clear();
         char buffer[4096];
         while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
@@ -255,7 +252,6 @@ std::string TestRunner::run_program(const std::string& input)
         }
 
         result = std::move(normalized);
-        std::cout << colors::blue << "[DEBUG] Final output: " << result << colors::reset << std::endl;
 #endif
 
     } catch (const std::exception& e) {
