@@ -195,8 +195,9 @@ std::string TestRunner::run_program(const std::string& input)
 #else
         int stdin_pipe[2];
         int stdout_pipe[2];
+        int stderr_pipe[2];
 
-        if (pipe(stdin_pipe) == -1 || pipe(stdout_pipe) == -1) {
+        if (pipe(stdin_pipe) == -1 || pipe(stdout_pipe) == -1 || pipe(stderr_pipe) == -1) {
             std::cerr << colors::red << "Error: Failed to create pipes" << colors::reset << std::endl;
             return "";
         }
@@ -207,6 +208,8 @@ std::string TestRunner::run_program(const std::string& input)
             close(stdin_pipe[1]);
             close(stdout_pipe[0]);
             close(stdout_pipe[1]);
+            close(stderr_pipe[0]);
+            close(stderr_pipe[1]);
             std::cerr << colors::red << "Error: Failed to create process" << colors::reset << std::endl;
             return "";
         }
@@ -214,14 +217,16 @@ std::string TestRunner::run_program(const std::string& input)
         if (pid == 0) {
             close(stdin_pipe[1]);
             close(stdout_pipe[0]);
+            close(stderr_pipe[0]);
 
-            if (dup2(stdin_pipe[0], STDIN_FILENO) == -1 || dup2(stdout_pipe[1], STDOUT_FILENO) == -1) {
+            if (dup2(stdin_pipe[0], STDIN_FILENO) == -1 || dup2(stdout_pipe[1], STDOUT_FILENO) == -1 || dup2(stderr_pipe[1], STDERR_FILENO) == -1) {
                 std::cerr << colors::red << "Error: Failed to redirect I/O" << colors::reset << std::endl;
                 exit(1);
             }
 
             close(stdin_pipe[0]);
             close(stdout_pipe[1]);
+            close(stderr_pipe[1]);
 
             execl(abs_program_path.c_str(), abs_program_path.c_str(), nullptr);
             std::cerr << colors::red << "Error: Failed to execute program" << colors::reset << std::endl;
@@ -229,11 +234,13 @@ std::string TestRunner::run_program(const std::string& input)
         } else {
             close(stdin_pipe[0]);
             close(stdout_pipe[1]);
+            close(stderr_pipe[1]);
 
             if (write(stdin_pipe[1], input.c_str(), input.length()) == -1) {
                 std::cerr << colors::red << "Error: Failed to write input" << colors::reset << std::endl;
                 close(stdin_pipe[1]);
                 close(stdout_pipe[0]);
+                close(stderr_pipe[0]);
                 return "";
             }
             close(stdin_pipe[1]);
@@ -241,11 +248,16 @@ std::string TestRunner::run_program(const std::string& input)
             result.clear();
             char buffer[4096];
             ssize_t bytes_read;
+
             while ((bytes_read = read(stdout_pipe[0], buffer, sizeof(buffer) - 1)) > 0) {
                 buffer[bytes_read] = '\0';
                 result.append(buffer, bytes_read);
             }
             close(stdout_pipe[0]);
+
+            while ((bytes_read = read(stderr_pipe[0], buffer, sizeof(buffer) - 1)) > 0) {
+            }
+            close(stderr_pipe[0]);
 
             int status;
             if (waitpid(pid, &status, 0) == -1) {
