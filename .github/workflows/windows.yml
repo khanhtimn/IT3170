@@ -40,7 +40,13 @@ jobs:
       shell: cmd
       run: |
         echo Building test framework...
-        cl /std:c++17 /W4 /O2 /EHsc /Fe"build\test.exe" tests\test.cpp tests\test_runner.cpp
+        cl /std:c++17 /W4 /O2 /EHsc /Fe"build\test.exe" ^
+           tests\test.cpp ^
+           tests\test_runner.cpp ^
+           tests\test_parser.cpp ^
+           tests\test_result.cpp ^
+           tests\output_formatter.cpp ^
+           tests\process_executor.cpp
         if errorlevel 1 (
           echo Failed to build test framework
           exit /b 1

@@ -11,7 +11,7 @@ int main(int argc, char* argv[])
     std::string week = argv[1];
     std::string program = argv[2];
 
-    TestRunner runner(week, program);
+    test::TestRunner runner(week, program);
     int failed_tests = runner.run_all_tests();
     runner.print_summary();
 

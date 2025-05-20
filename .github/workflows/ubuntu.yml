@@ -52,7 +52,7 @@ jobs:
           prog=$(basename "$src" .cpp)
           echo
           echo "Testing $week/$prog..."
-          build/test $week $prog
+          /build/test $week $prog
           TEST_RESULT=$?
           TOTAL_FAILED=$((TOTAL_FAILED + TEST_RESULT))
           TOTAL_TESTS=$((TOTAL_TESTS + 1))

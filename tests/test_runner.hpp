@@ -1,32 +1,31 @@
 #pragma once
-#include <algorithm>
+
+#include "process_executor.hpp"
+#include "test_result.hpp"
+#include <filesystem>
 #include <string>
 #include <vector>
 
+namespace test {
+
 class TestRunner {
 public:
-    struct TestResult {
-        std::string test_name;
-        bool passed;
-        std::string expected;
-        std::string actual;
-    };
+    explicit TestRunner(std::string_view week, std::string_view program);
 
-    TestRunner(const std::string& week, const std::string& program);
     int run_all_tests();
     void print_summary() const;
-    bool has_failures() const
-    {
-        return std::any_of(results.begin(), results.end(), [](const TestResult& r) { return !r.passed; });
-    }
+    [[nodiscard]] bool has_failures() const noexcept;
 
 private:
-    std::string week_dir;
-    std::string program_name;
-    std::string program_path;
-    std::vector<TestResult> results;
+    void run_test(const std::filesystem::path& test_file);
+    [[nodiscard]] std::filesystem::path get_test_directory() const;
+    [[nodiscard]] std::vector<std::filesystem::path> get_test_files() const;
 
-    void run_test(const std::string& test_file);
-    std::string run_program(const std::string& input);
-    std::pair<std::string, std::string> parse_test_file(const std::string& test_file);
+    std::string week_dir_;
+    std::string program_name_;
+    std::filesystem::path program_path_;
+    ProcessExecutor process_executor_;
+    TestResultManager result_manager_;
 };
+
+} // namespace test
