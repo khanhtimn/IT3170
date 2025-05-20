@@ -21,8 +21,6 @@ jobs:
     - name: Build source files
       shell: cmd
       run: |
-        echo Current directory: %CD%
-        dir src
         for /d %%w in (src\week*) do (
           echo Processing directory: %%w
           mkdir "build\%%~nxw" 2>nul
