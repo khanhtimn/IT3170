@@ -1,8 +1,16 @@
 # Bài tập Thuật toán Ứng dụng
 Bài tập trên trang hustack.soict.ai của lớp IT3170 - Thuật toán ứng dụng
 
-## Chạy trên máy local
+## Cấu trúc thư mục
 
+- `src/`: Thư mục chứa mã nguồn
+  - `week*/`: Bài tập theo tuần
+  - `testing/`: Framework test
+- `tests/`: Thư mục chứa test cases
+  - `week*/`: Test cases cho từng tuần
+- `build/`: Thư mục chứa file biên dịch
+
+## Chạy trên máy local
 ### Windows
 1. Cài đặt Visual Studio Build Tools
 2. Cài đặt Make (Tớ thích dùng [Scoop](https://github.com/ScoopInstaller/Scoop): `scoop install make`)
@@ -11,7 +19,6 @@ Bài tập trên trang hustack.soict.ai của lớp IT3170 - Thuật toán ứng
    make clean
    make all
    ```
-
 ### Linux
 1. Cài đặt GCC và Make (nếu chưa có):
    ```bash
@@ -23,7 +30,6 @@ Bài tập trên trang hustack.soict.ai của lớp IT3170 - Thuật toán ứng
    make clean
    make all
    ```
-
 ### macOS
 1. Cài đặt Xcode Command Line Tools (bao gồm Clang và Make):
    ```bash
@@ -34,7 +40,6 @@ Bài tập trên trang hustack.soict.ai của lớp IT3170 - Thuật toán ứng
    make clean
    make all
    ```
-
 ## Chạy test
 
 Để chạy test cho một chương trình cụ thể:
@@ -46,12 +51,3 @@ make test week1 maze
 ```bash
 make test-all
 ```
-
-## Cấu trúc thư mục
-
-- `src/`: Thư mục chứa mã nguồn
-  - `week*/`: Bài tập theo tuần
-  - `testing/`: Framework test
-- `tests/`: Thư mục chứa test cases
-  - `week*/`: Test cases cho từng tuần
-- `build/`: Thư mục chứa file biên dịch
