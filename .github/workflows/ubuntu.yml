@@ -1,0 +1,74 @@
+name: Ubuntu CI
+
+on:
+  push:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build on Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc g++ make
+    - name: Build
+      run: |
+        make clean
+        make all
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ubuntu-build
+        path: build/
+        retention-days: 5
+
+  test:
+    name: Test on Ubuntu
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: ubuntu-build
+        path: build
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc g++ make
+    - name: Run tests
+      run: |
+        chmod -R +x build/
+        FAILED=0
+        TOTAL_FAILED=0
+        TOTAL_TESTS=0
+        for src in src/week*/*.cpp; do
+          week=$(basename $(dirname "$src"))
+          prog=$(basename "$src" .cpp)
+          echo
+          echo "Testing $week/$prog..."
+          ./build/test $week $prog
+          TEST_RESULT=$?
+          TOTAL_FAILED=$((TOTAL_FAILED + TEST_RESULT))
+          TOTAL_TESTS=$((TOTAL_TESTS + 1))
+          if [ $TEST_RESULT -ne 0 ]; then
+            echo "Test failed for $week/$prog with $TEST_RESULT failures"
+            FAILED=1
+          else
+            echo "Test passed for $week/$prog"
+          fi
+        done
+        echo
+        echo "Test Summary:"
+        echo "Total Programs Tested: $TOTAL_TESTS"
+        echo "Total Test Failures: $TOTAL_FAILED"
+        if [ $FAILED -eq 1 ]; then
+          echo "Some tests failed"
+          exit 1
+        fi
+        echo "All tests passed" 

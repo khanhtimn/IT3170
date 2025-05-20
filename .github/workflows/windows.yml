@@ -1,0 +1,107 @@
+name: Windows CI
+
+on:
+  push:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build on Windows
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Visual Studio Build Tools
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+    - name: Create build directory
+      shell: cmd
+      run: mkdir build
+    - name: Build source files
+      shell: cmd
+      run: |
+        for /d %%w in (src\week*) do (
+          echo Processing directory: %%w
+          mkdir "build\%%~nxw" 2>nul
+          for %%p in ("%%w\*.cpp") do (
+            echo Found source file: %%~fp
+            echo Compiling %%~nxw/%%~nxp...
+            cl /std:c++17 /W4 /O2 /EHsc /Fe"build\%%~nxw\%%~np.exe" "%%~fp"
+            if errorlevel 1 (
+              echo Failed to compile: %%~fp
+              exit /b 1
+            )
+          )
+        )
+    - name: Build test framework
+      shell: cmd
+      run: |
+        echo Building test framework...
+        cl /std:c++17 /W4 /O2 /EHsc /Fe"build\test.exe" ^
+           src\testing\test.cpp ^
+           src\testing\test_runner.cpp ^
+           src\testing\test_parser.cpp ^
+           src\testing\test_result.cpp ^
+           src\testing\output_formatter.cpp ^
+           src\testing\process_executor.cpp
+        if errorlevel 1 (
+          echo Failed to build test framework
+          exit /b 1
+        )
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build
+        path: build/
+        retention-days: 5
+
+  test:
+    name: Test on Windows
+    needs: build
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: windows-build
+        path: build
+    - name: Run tests
+      shell: cmd
+      run: |
+        @echo off
+        setlocal EnableDelayedExpansion
+        
+        set "FAILED=0"
+        set "TOTAL_FAILED=0"
+        set "TOTAL_TESTS=0"
+        
+        for /d %%w in (src\week*) do (
+          for %%p in ("%%w\*.cpp") do (
+            echo.
+            echo Testing %%~nxw/%%~np...
+            build\test.exe %%~nxw %%~np
+            set "TEST_RESULT=!ERRORLEVEL!"
+            set /a "TOTAL_FAILED+=!TEST_RESULT!"
+            set /a "TOTAL_TESTS+=1"
+            
+            if !TEST_RESULT! gtr 0 (
+              echo Test failed for %%~nxw/%%~np with !TEST_RESULT! failures
+              set "FAILED=1"
+            ) else (
+              echo Test passed for %%~nxw/%%~np
+            )
+          )
+        )
+        
+        echo.
+        echo Test Summary:
+        echo Total Programs Tested: !TOTAL_TESTS!
+        echo Total Test Failures: !TOTAL_FAILED!
+        
+        if !FAILED!==1 (
+          echo Some tests failed
+          exit /b 1
+        )
+        echo All tests passed 

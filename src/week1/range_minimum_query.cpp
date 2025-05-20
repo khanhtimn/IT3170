@@ -25,7 +25,6 @@ Output
 6
 */
 
-#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <vector>

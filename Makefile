@@ -1,46 +1,88 @@
 ifeq ($(OS),Windows_NT)
-    COMPILER = cl
+    CC = cl
     EXE = .exe
-    RM = rmdir /s /q $(TARGET_DIR)
-    MKDIR = mkdir "$1" 2>nul || exit 0
+    RM = rmdir /s /q
+    MKDIR = mkdir
+    CFLAGS = /std:c++17 /W4 /O2 /EHsc
+    COMPILE = $(CC) $(CFLAGS) /Fo"$(dir $@)" /Fe"$@" $<
+    LINK = $(CC) $(CFLAGS) /Fo"$(dir $@)" /Fe"$@" $^
 else
-    COMPILER = g++
+    CC = gcc
     EXE =
-    RM = rm -rf $(TARGET_DIR)
-    MKDIR = mkdir -p "$1"
+    RM = rm -rf
+    MKDIR = mkdir -p
+    CFLAGS = -std=c++17 -Wall -O2 -x c++
+    LDFLAGS ?= -lstdc++ -lm
+    COMPILE = $(CC) $(CFLAGS) $< -o "$@" $(LDFLAGS)
+    LINK = $(CC) $(CFLAGS) $^ -o "$@" $(LDFLAGS)
 endif
 
-CC = $(COMPILER)
-CFLAGS = /std:c++17 /W4 /O2
+SRC_DIR = src
+BUILD_DIR = build
+TEST_DIR = tests
 
-TARGET_DIR = target
-
-WEEK_DIRS = $(wildcard week*)
-
-TARGET_WEEK_DIRS = $(patsubst week%,$(TARGET_DIR)/week%,$(notdir $(WEEK_DIRS)))
-
+WEEK_DIRS = $(wildcard $(SRC_DIR)/week*)
+BUILD_WEEK_DIRS = $(patsubst $(SRC_DIR)/week%,$(BUILD_DIR)/week%,$(WEEK_DIRS))
 SOURCES = $(foreach dir,$(WEEK_DIRS),$(wildcard $(dir)/*.cpp))
+TARGETS = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%$(EXE),$(SOURCES))
+TEST_EXE = $(BUILD_DIR)/test$(EXE)
 
-TARGETS = $(patsubst %.cpp,$(TARGET_DIR)/%$(EXE),$(SOURCES))
+TEST_SOURCES = $(SRC_DIR)/testing/test.cpp \
+               $(SRC_DIR)/testing/test_runner.cpp \
+               $(SRC_DIR)/testing/test_parser.cpp \
+               $(SRC_DIR)/testing/test_result.cpp \
+               $(SRC_DIR)/testing/output_formatter.cpp \
+               $(SRC_DIR)/testing/process_executor.cpp
 
-all: create_dirs $(TARGETS)
+.PHONY: all
+all: $(TARGETS) $(TEST_EXE)
 
-create_dirs: $(TARGET_WEEK_DIRS)
-
-$(TARGET_WEEK_DIRS):
-	@$(call MKDIR,$@)
-	@echo "Created directory $@"
-
-$(TARGET_DIR)/%$(EXE): %.cpp
+$(BUILD_DIR)/%$(EXE): $(SRC_DIR)/%.cpp
+	@$(MKDIR) "$(dir $@)" 2>nul || exit 0
 	@echo "Compiling $<..."
 ifeq ($(OS),Windows_NT)
-	@$(CC) $(CFLAGS) /Fe:"$@" /Fo:"$(dir $@)" $<
+	@$(COMPILE)
 else
-	@$(CC) $(CFLAGS) $< -o "$@"
+	@$(COMPILE)
 endif
 
-clean:
-	@echo "Cleaning $(TARGET_DIR)..."
-	@$(RM)
+$(TEST_EXE): $(TEST_SOURCES)
+	@$(MKDIR) "$(dir $@)" 2>nul || exit 0
+	@echo "Compiling test framework..."
+ifeq ($(OS),Windows_NT)
+	@$(LINK)
+else
+	@$(LINK)
+endif
 
-.PHONY: all clean create_dirs
+.PHONY: test test-all
+test: $(BUILD_DIR)/$(word 2,$(MAKECMDGOALS))/$(word 3,$(MAKECMDGOALS))$(EXE) $(TEST_EXE)
+	$(TEST_EXE) $(word 2,$(MAKECMDGOALS)) $(word 3,$(MAKECMDGOALS))
+
+%:
+	@:
+
+test-all: $(TARGETS) $(TEST_EXE)
+ifeq ($(OS),Windows_NT)
+	@for /d %%w in ($(SRC_DIR)\week*) do @for %%p in (%%w\*.cpp) do @echo. && echo Testing %%~nw/%%~np... && "$(TEST_EXE)" %%~nw %%~np
+else
+	@for src in $(SOURCES); do \
+		week=$$(basename $$(dirname $$src)); \
+		prog=$$(basename $$src .cpp); \
+		echo "\nTesting $$week/$$prog..."; \
+		$(TEST_EXE) $$week $$prog; \
+	done
+endif
+
+.PHONY: clean
+clean:
+ifeq ($(OS),Windows_NT)
+	@if exist "$(BUILD_DIR)" (echo "Cleaning $(BUILD_DIR)..." && $(RM) "$(BUILD_DIR)")
+	@if exist "$(TEST_DIR)" (for /r "$(TEST_DIR)" %%f in (*.out) do del "%%f")
+else
+	@if [ -d "$(BUILD_DIR)" ]; then \
+		echo "Cleaning $(BUILD_DIR)..."; \
+		$(RM) "$(BUILD_DIR)"; \
+	fi
+	@find "$(TEST_DIR)" -name "*.out" -type f -delete
+endif
