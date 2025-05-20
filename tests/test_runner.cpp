@@ -216,8 +216,6 @@ std::string TestRunner::run_program(const std::string& input)
         }
 
         if (pid == 0) {
-            std::cout << colors::blue << "[DEBUG] Child process: Setting up I/O" << colors::reset << std::endl;
-
             close(pipe_in[1]);
             close(pipe_out[0]);
 
@@ -233,13 +231,13 @@ std::string TestRunner::run_program(const std::string& input)
             close(pipe_in[0]);
             close(pipe_out[1]);
 
-            std::cout << colors::blue << "[DEBUG] Child process: Executing " << abs_program_path << colors::reset << std::endl;
+            std::cout.setstate(std::ios::failbit);
+            std::cerr.setstate(std::ios::failbit);
+
             execl(abs_program_path.c_str(), abs_program_path.c_str(), nullptr);
             std::cerr << colors::red << "Error: Failed to execute program" << colors::reset << std::endl;
             exit(1);
         }
-
-        std::cout << colors::blue << "[DEBUG] Parent process: Setting up I/O" << colors::reset << std::endl;
 
         close(pipe_in[0]);
         close(pipe_out[1]);
