@@ -1,7 +1,11 @@
 #include "process_executor.hpp"
 #include "output_formatter.hpp"
 #include <fstream>
+#include <functional>
+#include <iomanip>
 #include <iostream>
+#include <random>
+#include <sstream>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -13,6 +17,22 @@
 
 namespace test {
 
+namespace {
+    std::string hash_to_string(size_t hash)
+    {
+        std::stringstream ss;
+        ss << std::hex << std::setfill('0') << std::setw(16) << hash;
+        return ss.str();
+    }
+
+    std::string create_temp_file_from_hash(std::string_view content, const std::string& prefix)
+    {
+        std::hash<std::string_view> hasher;
+        size_t hash = hasher(content);
+        return (std::filesystem::path(std::filesystem::temp_directory_path()) / (prefix + "_" + hash_to_string(hash) + ".txt")).string();
+    }
+}
+
 ProcessExecutor::ProcessExecutor(std::filesystem::path program_path)
     : program_path_(std::move(program_path))
 {
@@ -22,7 +42,7 @@ std::string ProcessExecutor::execute(std::string_view input)
 {
     std::string result;
     std::string input_file = create_temp_input_file(input);
-    std::string output_file = (std::filesystem::path(std::filesystem::temp_directory_path()) / "test_output.txt").string();
+    std::string output_file = create_temp_file_from_hash(input, "test_output");
 
     try {
 #ifdef _WIN32
@@ -130,7 +150,7 @@ std::string ProcessExecutor::execute(std::string_view input)
 
 std::string ProcessExecutor::create_temp_input_file(std::string_view input)
 {
-    std::string input_file = (std::filesystem::path(std::filesystem::temp_directory_path()) / "test_input.txt").string();
+    std::string input_file = create_temp_file_from_hash(input, "test_input");
     std::ofstream in(input_file, std::ios::binary);
     if (!in) {
         throw std::runtime_error("Failed to create input file");

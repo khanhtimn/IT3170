@@ -1,4 +1,5 @@
 #include "test_parser.hpp"
+#include <algorithm>
 #include <fstream>
 
 namespace test {
@@ -49,8 +50,27 @@ std::pair<std::string, std::string> TestParser::parse_test_file(const std::files
 
 void TestParser::normalize_output(std::string& output)
 {
-    output.erase(0, output.find_first_not_of(" \n\r\t"));
-    output.erase(output.find_last_not_of(" \n\r\t") + 1);
+    std::string normalized;
+    normalized.reserve(output.size());
+    for (size_t i = 0; i < output.size(); ++i) {
+        if (output[i] == '\r' && i + 1 < output.size() && output[i + 1] == '\n') {
+            normalized += '\n';
+            ++i;
+        } else if (output[i] == '\r') {
+            normalized += '\n';
+        } else {
+            normalized += output[i];
+        }
+    }
+    output = std::move(normalized);
+
+    output.erase(0, output.find_first_not_of(" \n\t"));
+
+    output.erase(output.find_last_not_of(" \n\t") + 1);
+
+    if (!output.empty() && output.back() != '\n') {
+        output += '\n';
+    }
 }
 
 } // namespace test

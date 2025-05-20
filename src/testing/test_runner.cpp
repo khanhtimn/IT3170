@@ -14,31 +14,6 @@
 
 namespace test {
 
-namespace {
-    namespace colors {
-        constexpr const char* reset = "\033[0m";
-        constexpr const char* green = "\033[32m";
-        constexpr const char* red = "\033[31m";
-        constexpr const char* yellow = "\033[33m";
-    }
-
-    void print_test_header(const std::string& test_name)
-    {
-        std::cout << colors::green << "[ RUN      ]" << colors::reset << " " << test_name << "\n";
-    }
-
-    void print_test_result(const TestResult& result)
-    {
-        if (result.passed) {
-            std::cout << colors::green << "[       OK ]" << colors::reset << " " << result.test_name << "\n\n";
-        } else {
-            std::cout << colors::red << "[  FAILED  ]" << colors::reset << " " << result.test_name << "\n";
-            std::cout << "Expected: \"" << result.expected << "\"\n";
-            std::cout << "Actual:   \"" << result.actual << "\"\n\n";
-        }
-    }
-}
-
 TestRunner::TestRunner(std::string_view week, std::string_view program)
     : week_dir_(week)
     , program_name_(program)
@@ -91,8 +66,6 @@ int TestRunner::run_all_tests()
         std::cerr << OutputFormatter::warning("No test files found in " + test_dir.string());
         return 0;
     }
-
-    std::cout << OutputFormatter::test_summary_header(test_files.size());
 
     for (const auto& test_file : test_files) {
         run_test(test_file);
