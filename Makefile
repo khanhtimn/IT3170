@@ -56,8 +56,11 @@ else
 endif
 
 .PHONY: test test-all
-test: $(BUILD_DIR)/$(WEEK)/$(PROGRAM)$(EXE) $(TEST_EXE)
-	$(TEST_EXE) $(WEEK) $(PROGRAM)
+test: $(BUILD_DIR)/$(word 2,$(MAKECMDGOALS))/$(word 3,$(MAKECMDGOALS))$(EXE) $(TEST_EXE)
+	$(TEST_EXE) $(word 2,$(MAKECMDGOALS)) $(word 3,$(MAKECMDGOALS))
+
+%:
+	@:
 
 test-all: $(TARGETS) $(TEST_EXE)
 ifeq ($(OS),Windows_NT)
