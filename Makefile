@@ -19,14 +19,12 @@ endif
 
 SRC_DIR = src
 BUILD_DIR = build
-TEST_DIR = tests
 
-WEEK_DIRS = $(wildcard $(SRC_DIR)/week*)
-BUILD_WEEK_DIRS = $(patsubst $(SRC_DIR)/week%,$(BUILD_DIR)/week%,$(WEEK_DIRS))
-SOURCES = $(foreach dir,$(WEEK_DIRS),$(wildcard $(dir)/*.cpp))
+SOURCES = $(wildcard $(SRC_DIR)/exercises/*.cpp)
 TARGETS = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%$(EXE),$(SOURCES))
-TEST_EXE = $(BUILD_DIR)/test$(EXE)
 
+TEST_EXE = $(BUILD_DIR)/test$(EXE)
+TEST_DIR = tests
 TEST_SOURCES = $(SRC_DIR)/testing/test.cpp \
                $(SRC_DIR)/testing/test_runner.cpp \
                $(SRC_DIR)/testing/test_parser.cpp \
