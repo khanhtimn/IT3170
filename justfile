@@ -66,8 +66,7 @@ list:
 [group('meta')]
 [windows]
 list:
-  Get-ChildItem -Path "{{ src_dir }}/week[0-9]*/*.cpp" -ErrorAction SilentlyContinue |
-    ForEach-Object { Write-Host "$($_.Directory.Name) $($_.BaseName)" }
+  Get-ChildItem -Path "{{ src_dir }}/week[0-9]*/*.cpp" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "$($_.Directory.Name) $($_.BaseName)" }
 
 [group('build')]
 [unix]
@@ -334,16 +333,22 @@ test-all:
   #!/usr/bin/env bash
   shopt -s nullglob
   found=0
+  failed=0
   for src in {{ src_dir }}/week[0-9]*/*.cpp; do
     found=1
     week="$(basename "$(dirname "$src")")"
     prog="$(basename "$src" .cpp)"
     echo
     echo "Testing $week/$prog"
-    "{{ test_exe }}" "$week" "$prog"
+    if ! "{{ test_exe }}" "$week" "$prog"; then
+      failed=1
+    fi
   done
   if [[ $found -eq 0 ]]; then
     echo "No programs found."
+  fi
+  if [[ $failed -ne 0 ]]; then
+    exit 1
   fi
 
 [group('test')]
@@ -351,10 +356,13 @@ test-all:
 test-all:
   $files = Get-ChildItem -Path "{{ src_dir }}/week[0-9]*/*.cpp" -ErrorAction SilentlyContinue; \
   if (-not $files) { Write-Host "No programs found."; exit 0 }; \
+  $failed = $false; \
   $files | ForEach-Object { \
     Write-Host "`nTesting $($_.Directory.Name)/$($_.BaseName)"; \
-    & "{{ test_exe }}" $_.Directory.Name $_.BaseName \
-  }
+    & "{{ test_exe }}" $_.Directory.Name $_.BaseName; \
+    if ($LASTEXITCODE -ne 0) { $failed = $true } \
+  }; \
+  if ($failed) { exit 1 }
 
 [group('test')]
 [unix]
