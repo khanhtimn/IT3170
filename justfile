@@ -1,193 +1,422 @@
+set positional-arguments
 set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
 src_dir := "src"
 build_dir := "build"
 test_dir := "tests"
+mode := env("MODE", "release")
 
 exe := if os_family() == "windows" { ".exe" } else { "" }
 
-cc := if os_family() == "windows" { "cl" } else if os() == "macos" { "clang++" } else { "gcc" }
+cxx := env("CXX", if os_family() == "windows" {
+  "cl"
+} else if os() == "macos" {
+  "clang++"
+} else {
+  "g++"
+})
 
-cflags := if os_family() == "windows" {
+base_cxxflags := if os_family() == "windows" {
+  if mode == "debug" {
+    "/std:c++17 /W4 /Zi /Od /EHsc"
+  } else {
     "/std:c++17 /W4 /O2 /EHsc"
-} else if os() == "macos" {
-    "-std=c++17 -Wall -O2"
+  }
 } else {
-    "-std=c++17 -Wall -O2 -x c++"
+  if mode == "debug" {
+    "-std=c++17 -Wall -Wextra -g -O0"
+  } else {
+    "-std=c++17 -Wall -Wextra -O2"
+  }
 }
 
-ldflags := if os_family() == "windows" {
-    ""
-} else if os() == "macos" {
-    env("LDFLAGS", "-lm")
+cxxflags := env("CXXFLAGS", base_cxxflags)
+includes := if os_family() == "windows" {
+  "/I" + src_dir
 } else {
-    env("LDFLAGS", "-lstdc++ -lm")
+  "-I" + src_dir
 }
+ldflags := env("LDFLAGS", "")
+depflags := if os_family() == "windows" { "" } else { "-MMD -MP" }
 
 test_exe := build_dir / "test" + exe
 
-test_sources := src_dir / "testing/test.cpp " + \
-                src_dir / "testing/test_runner.cpp " + \
-                src_dir / "testing/test_parser.cpp " + \
-                src_dir / "testing/test_result.cpp " + \
-                src_dir / "testing/output_formatter.cpp " + \
-                src_dir / "testing/process_executor.cpp"
+default: build-all
+alias compile := b
+[group('meta')]
+help:
+  @just --list
 
-# Build everything
-default: build-all build-test
+[group('meta')]
+[unix]
+list:
+  #!/usr/bin/env bash
+  shopt -s nullglob
+  for src in {{ src_dir }}/week[0-9]*/*.cpp; do
+    week="$(basename "$(dirname "$src")")"
+    prog="$(basename "$src" .cpp)"
+    echo "$week $prog"
+  done
 
-# Build a single program
+[group('meta')]
+[windows]
+list:
+  Get-ChildItem -Path "{{ src_dir }}/week[0-9]*/*.cpp" -ErrorAction SilentlyContinue |
+    ForEach-Object { Write-Host "$($_.Directory.Name) $($_.BaseName)" }
+
 [group('build')]
 [unix]
-build week program:
-    #!/usr/bin/env bash
-    src="{{ src_dir / week / program }}.cpp"
-    target="{{ build_dir / week / program }}{{ exe }}"
-    if [ -f "$target" ] && [ "$target" -nt "$src" ]; then
-        echo "Skipping $src (up to date)"
-        exit 0
-    fi
-    mkdir -p "{{ build_dir / week }}"
-    echo "Compiling $src..."
-    {{ cc }} {{ cflags }} "$src" -o "$target" {{ ldflags }}
+b week program:
+  #!/usr/bin/env bash
+  src="{{ src_dir }}/{{ week }}/{{ program }}.cpp"
+  out_dir="{{ build_dir }}/{{ week }}"
+  target="$out_dir/{{ program }}{{ exe }}"
+  depfile="$out_dir/{{ program }}.d"
 
-# Build a single program
+  [[ -f "$src" ]] || { echo "Source not found: $src" >&2; exit 1; }
+  mkdir -p "$out_dir"
+
+  needs_rebuild=false
+  if [[ ! -f "$target" || ! -f "$depfile" ]]; then
+    needs_rebuild=true
+  elif [[ "$src" -nt "$target" ]]; then
+    needs_rebuild=true
+  else
+    while IFS= read -r dep; do
+      [[ -n "$dep" && -f "$dep" && "$dep" -nt "$target" ]] && {
+        needs_rebuild=true
+        break
+      }
+    done < <(
+      sed -e 's/\\$//' "$depfile" |
+        sed -e 's/^[^:]*: //' |
+        tr ' ' '\n' |
+        sed '/^$/d'
+    )
+  fi
+
+  if [[ "$needs_rebuild" == false ]]; then
+    exit 0
+  fi
+
+  echo "Building {{ week }}/{{ program }}"
+  {{ cxx }} {{ cxxflags }} {{ includes }} {{ depflags }} \
+    -MF "$depfile" \
+    "$src" \
+    -o "$target" \
+    {{ ldflags }}
+
 [group('build')]
 [windows]
-build week program:
-    $src = "{{ src_dir / week / program }}.cpp"; \
-    $target = "{{ build_dir / week / program }}{{ exe }}"; \
-    if (Test-Path $target) { \
-        if ((Get-Item $target).LastWriteTime -ge (Get-Item $src).LastWriteTime) { \
-            Write-Host "Skipping $src (up to date)"; \
-            return \
+b week program:
+  $src = "{{ src_dir }}/{{ week }}/{{ program }}.cpp"; \
+  $outDir = "{{ build_dir }}/{{ week }}"; \
+  $target = "$outDir/{{ program }}{{ exe }}"; \
+  $depfile = "$outDir/{{ program }}.d"; \
+  $showIncludesPrefix = "Note: including file:"; \
+  if (-not (Test-Path $src)) { \
+    Write-Error "Source not found: $src"; exit 1 \
+  }; \
+  New-Item -ItemType Directory -Force -Path $outDir | Out-Null; \
+  $needsRebuild = $false; \
+  if (-not (Test-Path $target) -or -not (Test-Path $depfile)) { \
+    $needsRebuild = $true \
+  } elseif ((Get-Item $src).LastWriteTime -gt (Get-Item $target).LastWriteTime) { \
+    $needsRebuild = $true \
+  } else { \
+    $targetTime = (Get-Item $target).LastWriteTime; \
+    $deps = Get-Content $depfile -ErrorAction SilentlyContinue; \
+    foreach ($dep in $deps) { \
+      if ($dep -and (Test-Path $dep)) { \
+        if ((Get-Item $dep).LastWriteTime -gt $targetTime) { \
+          $needsRebuild = $true; \
+          break \
         } \
-    }; \
-    New-Item -ItemType Directory -Force -Path "{{ build_dir / week }}" | Out-Null; \
-    Write-Host "Compiling $src..."; \
-    {{ cc }} {{ cflags }} /Fo"{{ build_dir / week }}/" /Fe"$target" "$src"
+      } \
+    } \
+  }; \
+  if (-not $needsRebuild) { return }; \
+  Write-Host "Building {{ week }}/{{ program }}"; \
+  $output = & {{ cxx }} {{ cxxflags }} {{ includes }} /nologo /showIncludes /Fe"$target" "$src" 2>&1; \
+  if ($LASTEXITCODE -ne 0) { \
+    $output | ForEach-Object { Write-Host $_ }; \
+    exit $LASTEXITCODE \
+  }; \
+  $deps = New-Object System.Collections.Generic.List[string]; \
+  $deps.Add((Resolve-Path $src).Path); \
+  foreach ($line in $output) { \
+    $text = [string]$line; \
+    if ($text.TrimStart().StartsWith($showIncludesPrefix)) { \
+      $dep = $text.Substring($text.IndexOf($showIncludesPrefix) + $showIncludesPrefix.Length).Trim(); \
+      if ($dep -and (Test-Path $dep)) { \
+        try { \
+          $resolved = (Resolve-Path $dep).Path; \
+          if (-not $deps.Contains($resolved)) { \
+            $deps.Add($resolved) \
+          } \
+        } catch {} \
+      } \
+    } else { \
+      Write-Host $text \
+    } \
+  }; \
+  Set-Content -Path $depfile -Value $deps
 
-# Build all week*/program targets
 [group('build')]
 [unix]
 build-all:
-    #!/usr/bin/env bash
-    for src in {{ src_dir }}/week*/*.cpp; do
-        [ -f "$src" ] || continue
-        week="$(basename "$(dirname "$src")")"
-        prog="$(basename "$src" .cpp)"
-        just build "$week" "$prog"
+  #!/usr/bin/env bash
+  shopt -s nullglob
+  found=0
+  for src in {{ src_dir }}/week[0-9]*/*.cpp; do
+    found=1
+    week="$(basename "$(dirname "$src")")"
+    prog="$(basename "$src" .cpp)"
+    just b "$week" "$prog"
+  done
+  if [[ $found -eq 0 ]]; then
+    echo "No programs found."
+  fi
+
+[group('build')]
+[windows]
+build-all:
+  $files = Get-ChildItem -Path "{{ src_dir }}/week[0-9]*/*.cpp" -ErrorAction SilentlyContinue; \
+  if (-not $files) { Write-Host "No programs found."; exit 0 }; \
+  $files | ForEach-Object { just b $_.Directory.Name $_.BaseName }
+
+[group('build')]
+[unix]
+build-test:
+  #!/usr/bin/env bash
+  out_dir="{{ build_dir }}/testing"
+  target="{{ test_exe }}"
+  depfile="$out_dir/test.d"
+  sources=(
+    "{{ src_dir }}/testing/test.cpp"
+    "{{ src_dir }}/testing/test_runner.cpp"
+    "{{ src_dir }}/testing/test_parser.cpp"
+    "{{ src_dir }}/testing/test_result.cpp"
+    "{{ src_dir }}/testing/output_formatter.cpp"
+    "{{ src_dir }}/testing/process_executor.cpp"
+  )
+
+  mkdir -p "$out_dir"
+
+  for src in "${sources[@]}"; do
+    [[ -f "$src" ]] || { echo "Missing test source: $src" >&2; exit 1; }
+  done
+
+  needs_rebuild=false
+  if [[ ! -f "$target" || ! -f "$depfile" ]]; then
+    needs_rebuild=true
+  else
+    for src in "${sources[@]}"; do
+      if [[ "$src" -nt "$target" ]]; then
+        needs_rebuild=true
+        break
+      fi
     done
 
-# Build all week*/program targets
-[group('build')]
-[windows]
-build-all:
-    Get-ChildItem -Path "{{ src_dir }}/week*/*.cpp" | ForEach-Object { \
-        $week = $_.Directory.Name; \
-        $prog = $_.BaseName; \
-        just build $week $prog \
-    }
-
-# Build the test framework
-[group('build')]
-[unix]
-build-test:
-    #!/usr/bin/env bash
-    sources=({{ test_sources }})
-    target="{{ test_exe }}"
-    needs_rebuild=false
-    if [ ! -f "$target" ]; then
-        needs_rebuild=true
-    else
-        for src in "${sources[@]}"; do
-            if [ "$src" -nt "$target" ]; then
-                needs_rebuild=true
-                break
-            fi
-        done
+    if [[ "$needs_rebuild" == false ]]; then
+      while IFS= read -r dep; do
+        [[ -n "$dep" && -f "$dep" && "$dep" -nt "$target" ]] && {
+          needs_rebuild=true
+          break
+        }
+      done < <(
+        sed -e 's/\\$//' "$depfile" |
+          sed -e 's/^[^:]*: //' |
+          tr ' ' '\n' |
+          sed '/^$/d'
+      )
     fi
-    if [ "$needs_rebuild" = false ]; then
-        echo "Skipping test framework (up to date)"
-        exit 0
-    fi
-    mkdir -p "{{ build_dir }}"
-    echo "Compiling test framework..."
-    {{ cc }} {{ cflags }} {{ test_sources }} -o {{ test_exe }} {{ ldflags }}
+  fi
 
-# Build the test framework
+  if [[ "$needs_rebuild" == false ]]; then
+    exit 0
+  fi
+
+  echo "Building test framework"
+  {{ cxx }} {{ cxxflags }} {{ includes }} {{ depflags }} \
+    -MF "$depfile" \
+    "${sources[@]}" \
+    -o "$target" \
+    {{ ldflags }}
+
 [group('build')]
 [windows]
 build-test:
-    $sources = @({{ test_sources }}); \
-    $target = "{{ test_exe }}"; \
-    $needsRebuild = $false; \
-    if (-not (Test-Path $target)) { \
-        $needsRebuild = $true \
-    } else { \
-        $targetTime = (Get-Item $target).LastWriteTime; \
-        foreach ($src in $sources) { \
-            if ((Get-Item $src).LastWriteTime -gt $targetTime) { \
-                $needsRebuild = $true; \
-                break \
-            } \
-        } \
+  $sources = @( \
+    "{{ src_dir }}/testing/test.cpp", \
+    "{{ src_dir }}/testing/test_runner.cpp", \
+    "{{ src_dir }}/testing/test_parser.cpp", \
+    "{{ src_dir }}/testing/test_result.cpp", \
+    "{{ src_dir }}/testing/output_formatter.cpp", \
+    "{{ src_dir }}/testing/process_executor.cpp" \
+  ); \
+  $outDir = "{{ build_dir }}/testing"; \
+  $target = "{{ test_exe }}"; \
+  $depfile = "$outDir/test.d"; \
+  $showIncludesPrefix = "Note: including file:"; \
+  foreach ($src in $sources) { \
+    if (-not (Test-Path $src)) { \
+      Write-Error "Missing test source: $src"; exit 1 \
+    } \
+  }; \
+  New-Item -ItemType Directory -Force -Path $outDir | Out-Null; \
+  $needsRebuild = $false; \
+  if (-not (Test-Path $target) -or -not (Test-Path $depfile)) { \
+    $needsRebuild = $true \
+  } else { \
+    $targetTime = (Get-Item $target).LastWriteTime; \
+    foreach ($src in $sources) { \
+      if ((Get-Item $src).LastWriteTime -gt $targetTime) { \
+        $needsRebuild = $true; \
+        break \
+      } \
     }; \
     if (-not $needsRebuild) { \
-        Write-Host "Skipping test framework (up to date)"; \
-        return \
-    }; \
-    New-Item -ItemType Directory -Force -Path "{{ build_dir }}" | Out-Null; \
-    Write-Host "Compiling test framework..."; \
-    {{ cc }} {{ cflags }} /Fo"{{ build_dir }}/" /Fe"$target" {{ test_sources }}
+      $deps = Get-Content $depfile -ErrorAction SilentlyContinue; \
+      foreach ($dep in $deps) { \
+        if ($dep -and (Test-Path $dep)) { \
+          if ((Get-Item $dep).LastWriteTime -gt $targetTime) { \
+            $needsRebuild = $true; \
+            break \
+          } \
+        } \
+      } \
+    } \
+  }; \
+  if (-not $needsRebuild) { return }; \
+  Write-Host "Building test framework"; \
+  $output = & {{ cxx }} {{ cxxflags }} {{ includes }} /nologo /showIncludes /Fe"$target" $sources 2>&1; \
+  if ($LASTEXITCODE -ne 0) { \
+    $output | ForEach-Object { Write-Host $_ }; \
+    exit $LASTEXITCODE \
+  }; \
+  $deps = New-Object System.Collections.Generic.List[string]; \
+  foreach ($src in $sources) { \
+    $resolved = (Resolve-Path $src).Path; \
+    if (-not $deps.Contains($resolved)) { \
+      $deps.Add($resolved) \
+    } \
+  }; \
+  foreach ($line in $output) { \
+    $text = [string]$line; \
+    if ($text.TrimStart().StartsWith($showIncludesPrefix)) { \
+      $dep = $text.Substring($text.IndexOf($showIncludesPrefix) + $showIncludesPrefix.Length).Trim(); \
+      if ($dep -and (Test-Path $dep)) { \
+        try { \
+          $resolved = (Resolve-Path $dep).Path; \
+          if (-not $deps.Contains($resolved)) { \
+            $deps.Add($resolved) \
+          } \
+        } catch {} \
+      } \
+    } else { \
+      Write-Host $text \
+    } \
+  }; \
+  Set-Content -Path $depfile -Value $deps
 
-# Run test for a single program
 [group('test')]
-test week program: (build week program) build-test
-    {{ test_exe }} {{ week }} {{ program }}
+test: build-all build-test test-all
 
-# Run all tests
 [group('test')]
 [unix]
-test-all: build-all build-test
-    #!/usr/bin/env bash
-    for src in {{ src_dir }}/week*/*.cpp; do
-        [ -f "$src" ] || continue
-        week="$(basename "$(dirname "$src")")"
-        prog="$(basename "$src" .cpp)"
-        echo ""
-        echo "Testing $week/$prog..."
-        just test "$week" "$prog"
-    done
+test-all:
+  #!/usr/bin/env bash
+  shopt -s nullglob
+  found=0
+  for src in {{ src_dir }}/week[0-9]*/*.cpp; do
+    found=1
+    week="$(basename "$(dirname "$src")")"
+    prog="$(basename "$src" .cpp)"
+    echo
+    echo "Testing $week/$prog"
+    "{{ test_exe }}" "$week" "$prog"
+  done
+  if [[ $found -eq 0 ]]; then
+    echo "No programs found."
+  fi
 
-# Run all tests
 [group('test')]
 [windows]
-test-all: build-all build-test
-    Get-ChildItem -Path "{{ src_dir }}/week*/*.cpp" | ForEach-Object { \
-        $week = $_.Directory.Name; \
-        $prog = $_.BaseName; \
-        Write-Host "`nTesting $week/$prog..."; \
-        just test $week $prog \
-    }
+test-all:
+  $files = Get-ChildItem -Path "{{ src_dir }}/week[0-9]*/*.cpp" -ErrorAction SilentlyContinue; \
+  if (-not $files) { Write-Host "No programs found."; exit 0 }; \
+  $files | ForEach-Object { \
+    Write-Host "`nTesting $($_.Directory.Name)/$($_.BaseName)"; \
+    & "{{ test_exe }}" $_.Directory.Name $_.BaseName \
+  }
 
-# Clean build artifacts and test outputs
+[group('test')]
+[unix]
+check week program:
+  #!/usr/bin/env bash
+  just b "{{ week }}" "{{ program }}"
+  just build-test
+  "{{ test_exe }}" "{{ week }}" "{{ program }}"
+
+[group('test')]
+[windows]
+check week program:
+  just b "{{ week }}" "{{ program }}"; \
+  just build-test; \
+  & "{{ test_exe }}" "{{ week }}" "{{ program }}"
+
+[group('run')]
+[unix]
+run week program:
+  #!/usr/bin/env bash
+  just b "{{ week }}" "{{ program }}"
+  "{{ build_dir }}/{{ week }}/{{ program }}{{ exe }}"
+
+[group('run')]
+[windows]
+run week program:
+  just b "{{ week }}" "{{ program }}"; \
+  & "{{ build_dir }}/{{ week }}/{{ program }}{{ exe }}"
+
 [group('util')]
 [confirm("Remove build directory and .out files?")]
 [unix]
 clean:
-    {{ if path_exists(build_dir) == "true" { "echo 'Cleaning " + build_dir + "...' && rm -rf " + build_dir } else { "echo 'Nothing to clean.'" } }}
-    find "{{ test_dir }}" -name "*.out" -type f -delete 2>/dev/null || true
+  #!/usr/bin/env bash
+  if [[ -d "{{ build_dir }}" ]]; then
+    echo "Cleaning {{ build_dir }}"
+    rm -rf "{{ build_dir }}"
+  else
+    echo "Nothing to clean."
+  fi
+  find "{{ test_dir }}" -name "*.out" -type f -delete 2>/dev/null || true
 
-# Clean build artifacts and test outputs
 [group('util')]
 [confirm("Remove build directory and .out files?")]
 [windows]
 clean:
-    if (Test-Path "{{ build_dir }}") { Write-Host "Cleaning {{ build_dir }}..."; Remove-Item -Recurse -Force "{{ build_dir }}" } else { Write-Host "Nothing to clean." }
-    Get-ChildItem -Path "{{ test_dir }}" -Filter "*.out" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force
+  if (Test-Path "{{ build_dir }}") { \
+    Write-Host "Cleaning {{ build_dir }}"; \
+    Remove-Item -Recurse -Force "{{ build_dir }}" \
+  } else { \
+    Write-Host "Nothing to clean." \
+  }; \
+  Get-ChildItem -Path "{{ test_dir }}" -Filter "*.out" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force
 
-# Force rebuild everything
+[group('util')]
+[unix]
+clean-force:
+  #!/usr/bin/env bash
+  rm -rf "{{ build_dir }}"
+  find "{{ test_dir }}" -name "*.out" -type f -delete 2>/dev/null || true
+
+[group('util')]
+[windows]
+clean-force:
+  if (Test-Path "{{ build_dir }}") { Remove-Item -Recurse -Force "{{ build_dir }}" }; \
+  Get-ChildItem -Path "{{ test_dir }}" -Filter "*.out" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force
+
 [group('build')]
-rebuild: clean default
+rebuild: clean-force test
