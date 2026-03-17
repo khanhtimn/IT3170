@@ -1,5 +1,8 @@
 #include "output_formatter.hpp"
+#include <algorithm>
 #include <sstream>
+#include <string_view>
+#include <utility>
 
 namespace test {
 
@@ -9,10 +12,6 @@ std::string OutputFormatter::test_header(const std::string& test_name)
     ss << green << "[ RUN      ]" << reset << " " << test_name << "\n";
     return ss.str();
 }
-
-#include <algorithm>
-#include <string_view>
-#include <utility>
 
 namespace {
     std::string get_mismatch_context(std::string_view expected, std::string_view actual) {
