@@ -25,87 +25,46 @@ Output
 6
 */
 
-#include <cmath>
+#include <algorithm>
 #include <iostream>
+#include <tuple>
 #include <vector>
 
-using std::cin;
-using std::cout;
-using std::endl;
-using std::vector;
-
-vector<vector<int>> build_sparse_table(const vector<int>& values)
+int min_in_range(const std::vector<int>& a, std::vector<std::tuple<int, int, int>>& pairs)
 {
-    int n = values.size();
-    int log_n = std::log2(n) + 1;
-    vector<vector<int>> sparse_table(log_n, vector<int>(n, -1));
-
-    for (int j = 0; j < n; ++j) {
-        sparse_table[0][j] = j;
+    int sum = 0;
+    for (auto& p : pairs) {
+        std::get<2>(p) = *std::min_element(a.begin() + std::get<0>(p), a.begin() + std::get<1>(p) + 1);
     }
 
-    for (int i = 1; (1 << i) <= n; ++i) {
-        for (int j = 0; j + (1 << i) - 1 < n; ++j) {
-            int left = sparse_table[i - 1][j];
-            int right = sparse_table[i - 1][j + (1 << (i - 1))];
-            sparse_table[i][j] = (values[left] < values[right]) ? left : right;
-        }
+    for (const auto& [start, end, min] : pairs) {
+        sum += min;
     }
-
-    return sparse_table;
-}
-
-int query_min_index(const vector<vector<int>>& sparse_table,
-    const vector<int>& values,
-    int left, int right)
-{
-    int k = std::log2(right - left + 1);
-    int power = 1 << k;
-
-    int left_min = sparse_table[k][left];
-    int right_min = sparse_table[k][right - power + 1];
-
-    return (values[left_min] < values[right_min]) ? left_min : right_min;
-}
-
-vector<int> read_values()
-{
-    int n;
-    cin >> n;
-
-    vector<int> values(n);
-    for (int i = 0; i < n; ++i) {
-        cin >> values[i];
-    }
-
-    return values;
-}
-
-long long process_queries(const vector<vector<int>>& sparse_table,
-    const vector<int>& values)
-{
-    int m;
-    cin >> m;
-
-    long long sum = 0;
-    for (int k = 0; k < m; ++k) {
-        int left, right;
-        cin >> left >> right;
-        int min_index = query_min_index(sparse_table, values, left, right);
-        sum += values[min_index];
-    }
-
     return sum;
 }
 
 int main()
 {
-    std::ios::sync_with_stdio(false);
-    std::cin.tie(nullptr);
+    int n;
+    std::cin >> n;
+    std::vector<int> a(n);
 
-    vector<int> values = read_values();
-    vector<vector<int>> sparse_table = build_sparse_table(values);
+    for (int i = 0; i < n; ++i) {
+        std::cin >> a[i];
+    }
 
-    cout << process_queries(sparse_table, values) << endl;
+    int m;
+    std::cin >> m;
+    std::vector<std::tuple<int, int, int>> pairs;
+
+    for (int i = 0; i < m; ++i) {
+        int start, end;
+        std::cin >> start;
+        std::cin >> end;
+        pairs.push_back(std::make_tuple(start, end, 0));
+    }
+
+    std::cout << min_in_range(a, pairs) << "\n";
+
     return 0;
 }
