@@ -12,6 +12,7 @@ std::string OutputFormatter::test_header(const std::string& test_name)
 
 #include <algorithm>
 #include <string_view>
+#include <utility>
 
 namespace {
     std::string get_mismatch_context(std::string_view expected, std::string_view actual) {
