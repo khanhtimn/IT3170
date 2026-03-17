@@ -1,4 +1,3 @@
-set positional-arguments
 set windows-shell := ["powershell.exe", "-NoLogo", "-NoProfile", "-Command"]
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
