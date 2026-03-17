@@ -2,7 +2,9 @@
 #include "output_formatter.hpp"
 #include "test_parser.hpp"
 #include <algorithm>
+#include <future>
 #include <iostream>
+#include <mutex>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -13,6 +15,10 @@
 #endif
 
 namespace test {
+
+namespace {
+    std::mutex print_mutex;
+}
 
 TestRunner::TestRunner(std::string_view week, std::string_view program)
     : week_dir_(week)
@@ -67,8 +73,15 @@ int TestRunner::run_all_tests()
         return 0;
     }
 
+    std::vector<std::future<void>> futures;
     for (const auto& test_file : test_files) {
-        run_test(test_file);
+        futures.push_back(std::async(std::launch::async, [this, test_file]() {
+            this->run_test(test_file);
+        }));
+    }
+
+    for (auto& fut : futures) {
+        fut.wait();
     }
 
     return result_manager_.get_failed_count();
@@ -89,6 +102,7 @@ void TestRunner::run_test(const std::filesystem::path& test_file)
     result.actual = actual;
     result_manager_.add_result(result);
 
+    std::lock_guard<std::mutex> lock(print_mutex);
     std::cout << OutputFormatter::test_header(result.test_name);
     std::cout << OutputFormatter::test_result(result);
 }

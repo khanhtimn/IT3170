@@ -7,11 +7,13 @@ namespace test {
 
 void TestResultManager::add_result(const TestResult& result)
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     results_.push_back(result);
 }
 
 void TestResultManager::print_summary() const
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     int passed = std::count_if(results_.begin(), results_.end(),
         [](const TestResult& r) { return r.passed; });
     int total = results_.size();
@@ -31,14 +33,16 @@ void TestResultManager::print_summary() const
     }
 }
 
-bool TestResultManager::has_failures() const noexcept
+bool TestResultManager::has_failures() const
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     return std::any_of(results_.begin(), results_.end(),
         [](const TestResult& r) { return !r.passed; });
 }
 
-int TestResultManager::get_failed_count() const noexcept
+int TestResultManager::get_failed_count() const
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     return std::count_if(results_.begin(), results_.end(),
         [](const TestResult& r) { return !r.passed; });
 }

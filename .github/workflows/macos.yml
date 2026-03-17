@@ -1,4 +1,4 @@
-name: Windows CI
+name: macOS CI
 
 on:
   push:
@@ -7,32 +7,27 @@ on:
 
 jobs:
   build:
-    name: Build on Windows
-    runs-on: windows-latest
+    name: Build on macOS
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Install Visual Studio Build Tools
-      uses: ilammy/msvc-dev-cmd@v1
-      with:
-        arch: x64
     - name: Install just
       uses: extractions/setup-just@v2
-    - name: Build source files and test framework
-      shell: pwsh
+    - name: Build
       run: |
         just build-all
         just build-test
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: windows-build
+        name: macos-build
         path: build/
         retention-days: 5
 
   test:
-    name: Test on Windows
+    name: Test on macOS
     needs: build
-    runs-on: windows-latest
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v4
     - name: Install just
@@ -40,9 +35,9 @@ jobs:
     - name: Download build artifacts
       uses: actions/download-artifact@v4
       with:
-        name: windows-build
+        name: macos-build
         path: build
     - name: Run tests
-      shell: pwsh
-      run: just test-all
- 
+      run: |
+        chmod -R +x build/
+        just test-all

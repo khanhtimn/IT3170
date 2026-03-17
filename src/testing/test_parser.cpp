@@ -15,35 +15,34 @@ std::pair<std::string, std::string> TestParser::parse_test_file(const std::files
         std::istreambuf_iterator<char>());
     file.close();
 
-    size_t input_start = content.find("INPUT:");
+    size_t input_start = content.find("===INPUT===");
     if (input_start == std::string::npos) {
         return { "", "" };
     }
+    
+    // Find the next line after ===INPUT===
+    input_start = content.find('\n', input_start);
+    if (input_start == std::string::npos) return { "", "" };
+    input_start += 1;
 
-    size_t output_start = content.find("OUTPUT:", input_start);
+    size_t output_start = content.find("===OUTPUT===", input_start);
     if (output_start == std::string::npos) {
         return { "", "" };
     }
 
-    size_t input_quote_start = content.find('"', input_start);
-    if (input_quote_start == std::string::npos) {
-        return { "", "" };
-    }
-    size_t input_quote_end = content.find('"', input_quote_start + 1);
-    if (input_quote_end == std::string::npos) {
-        return { "", "" };
-    }
-    std::string input = content.substr(input_quote_start + 1, input_quote_end - input_quote_start - 1);
+    std::string input = content.substr(input_start, output_start - input_start);
 
-    size_t output_quote_start = content.find('"', output_start);
-    if (output_quote_start == std::string::npos) {
+    // Find the next line after ===OUTPUT===
+    output_start = content.find('\n', output_start);
+    if (output_start == std::string::npos) return { "", "" };
+    output_start += 1;
+
+    size_t end_start = content.find("===END===", output_start);
+    if (end_start == std::string::npos) {
         return { "", "" };
     }
-    size_t output_quote_end = content.find('"', output_quote_start + 1);
-    if (output_quote_end == std::string::npos) {
-        return { "", "" };
-    }
-    std::string expected = content.substr(output_quote_start + 1, output_quote_end - output_quote_start - 1);
+
+    std::string expected = content.substr(output_start, end_start - output_start);
 
     return { input, expected };
 }

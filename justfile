@@ -20,12 +20,16 @@ cxx := env("CXX", if os_family() == "windows" {
 base_cxxflags := if os_family() == "windows" {
   if mode == "debug" {
     "/std:c++17 /W4 /Zi /Od /EHsc"
+  } else if mode == "asan" {
+    "/std:c++17 /W4 /Zi /Od /EHsc /fsanitize=address"
   } else {
     "/std:c++17 /W4 /O2 /EHsc"
   }
 } else {
   if mode == "debug" {
     "-std=c++17 -Wall -Wextra -g -O0"
+  } else if mode == "asan" {
+    "-std=c++17 -Wall -Wextra -g -O1 -fsanitize=address,undefined"
   } else {
     "-std=c++17 -Wall -Wextra -O2"
   }

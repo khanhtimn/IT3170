@@ -1,15 +1,19 @@
 #include "process_executor.hpp"
 #include "output_formatter.hpp"
+#include <atomic>
+#include <chrono>
 #include <fstream>
 #include <functional>
 #include <iomanip>
 #include <iostream>
 #include <random>
 #include <sstream>
+#include <thread>
 
 #ifdef _WIN32
 #include <windows.h>
 #else
+#include <csignal>
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -18,18 +22,15 @@
 namespace test {
 
 namespace {
-    std::string hash_to_string(size_t hash)
+    std::atomic<uint64_t> file_counter{ 0 };
+
+    std::string create_temp_file_name(const std::string& prefix)
     {
         std::stringstream ss;
-        ss << std::hex << std::setfill('0') << std::setw(16) << hash;
-        return ss.str();
-    }
-
-    std::string create_temp_file_from_hash(std::string_view content, const std::string& prefix)
-    {
-        std::hash<std::string_view> hasher;
-        size_t hash = hasher(content);
-        return (std::filesystem::path(std::filesystem::temp_directory_path()) / (prefix + "_" + hash_to_string(hash) + ".txt")).string();
+        ss << prefix << "_" 
+           << std::this_thread::get_id() << "_"
+           << ++file_counter << ".txt";
+        return (std::filesystem::temp_directory_path() / ss.str()).string();
     }
 }
 
@@ -42,7 +43,7 @@ std::string ProcessExecutor::execute(std::string_view input)
 {
     std::string result;
     std::string input_file = create_temp_input_file(input);
-    std::string output_file = create_temp_file_from_hash(input, "test_output");
+    std::string output_file = create_temp_file_name("test_output");
 
     try {
 #ifdef _WIN32
@@ -101,7 +102,14 @@ std::string ProcessExecutor::execute(std::string_view input)
             result.append(chBuf, dwRead);
         }
 
-        WaitForSingleObject(piProcInfo.hProcess, INFINITE);
+        DWORD waitResult = WaitForSingleObject(piProcInfo.hProcess, 2000);
+        if (waitResult == WAIT_TIMEOUT) {
+            std::cerr << OutputFormatter::warning("Program timed out after 2000ms and was killed");
+            TerminateProcess(piProcInfo.hProcess, 1);
+            WaitForSingleObject(piProcInfo.hProcess, INFINITE); // Wait for termination
+            return "";
+        }
+        
         DWORD exitCode;
         GetExitCodeProcess(piProcInfo.hProcess, &exitCode);
         if (exitCode != 0) {
@@ -112,28 +120,60 @@ std::string ProcessExecutor::execute(std::string_view input)
         CloseHandle(piProcInfo.hThread);
         CloseHandle(hChildStdoutRd);
 #else
-        std::string cmd = program_path_.string() + " < " + input_file;
-        FILE* pipe = popen(cmd.c_str(), "r");
-        if (!pipe) {
-            std::cerr << OutputFormatter::error("Failed to execute program");
+        std::string cmd = program_path_.string() + " < " + input_file + " > " + output_file;
+        
+        pid_t pid = fork();
+        if (pid == -1) {
+            std::cerr << OutputFormatter::error("Failed to fork process");
             return "";
-        }
-
-        char buffer[4096];
-        while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-            result.append(buffer);
-        }
-
-        int status = pclose(pipe);
-        if (status == -1) {
-            std::cerr << OutputFormatter::error("Failed to close process");
-            return "";
-        }
-
-        if (WIFEXITED(status)) {
-            int exit_status = WEXITSTATUS(status);
-            if (exit_status != 0) {
-                std::cerr << OutputFormatter::warning("Program exited with status " + std::to_string(exit_status));
+        } else if (pid == 0) {
+            // Child process
+            execl("/bin/sh", "sh", "-c", cmd.c_str(), nullptr);
+            _exit(127); // Should not reach here
+        } else {
+            // Parent process
+            auto start_time = std::chrono::steady_clock::now();
+            int status;
+            bool timed_out = false;
+            
+            while (true) {
+                pid_t result_pid = waitpid(pid, &status, WNOHANG);
+                if (result_pid == pid) {
+                    break; // Process finished
+                } else if (result_pid == -1) {
+                    std::cerr << OutputFormatter::error("waitpid failed");
+                    return "";
+                }
+                
+                auto now = std::chrono::steady_clock::now();
+                if (std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time).count() > 2000) {
+                    timed_out = true;
+                    kill(pid, SIGKILL);
+                    waitpid(pid, &status, 0); // Clean up zombie
+                    break;
+                }
+                
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+            
+            if (timed_out) {
+                std::cerr << OutputFormatter::warning("Program timed out after 2000ms and was killed");
+                return "";
+            } else if (WIFEXITED(status)) {
+                int exit_status = WEXITSTATUS(status);
+                if (exit_status != 0) {
+                    std::cerr << OutputFormatter::warning("Program exited with status " + std::to_string(exit_status));
+                }
+            } else if (WIFSIGNALED(status)) {
+                std::cerr << OutputFormatter::warning("Program was terminated by signal " + std::to_string(WTERMSIG(status)));
+            }
+            
+            // Read output file
+            std::ifstream out(output_file, std::ios::binary);
+            if (out) {
+                std::stringstream buffer;
+                buffer << out.rdbuf();
+                result = buffer.str();
             }
         }
 #endif
@@ -150,7 +190,7 @@ std::string ProcessExecutor::execute(std::string_view input)
 
 std::string ProcessExecutor::create_temp_input_file(std::string_view input)
 {
-    std::string input_file = create_temp_file_from_hash(input, "test_input");
+    std::string input_file = create_temp_file_name("test_input");
     std::ofstream in(input_file, std::ios::binary);
     if (!in) {
         throw std::runtime_error("Failed to create input file");

@@ -1,3 +1,6 @@
-INPUT: "2 10
-2 2"
-OUTPUT: "4"
+===INPUT===
+2 10
+2 2
+===OUTPUT===
+4
+===END===
