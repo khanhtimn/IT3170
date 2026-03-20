@@ -39,125 +39,111 @@ Output
 
 #include <iomanip>
 #include <iostream>
-#include <regex>
 #include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-using std::cin;
-using std::cout;
-using std::endl;
-using std::getline;
-using std::regex;
-using std::string;
-using std::unordered_map;
-using std::vector;
-
 struct Call {
-    string fromNumber;
-    string toNumber;
-    string date;
-    string fromTime;
-    string endTime;
+    std::string fromNumber;
+    std::string toNumber;
+    std::string date;
+    std::string fromTime;
+    std::string endTime;
     int durationSeconds;
 };
 
-bool isValidPhoneNumber(const string& phoneNumber)
+static bool isValidPhoneNumber(const std::string& number)
 {
-    if (phoneNumber.length() != 10)
-        return false;
-    return phoneNumber.find_first_not_of("0123456789") == string::npos;
+    return number.length() == 10 && number.find_first_not_of("0123456789") == std::string::npos;
 }
 
-int calculateDuration(const string& fromTime, const string& endTime)
+static int calculateDuration(
+    const std::string& from, const std::string& to)
 {
-    std::tm tm1 = {}, tm2 = {};
-    std::istringstream ss1(fromTime);
-    std::istringstream ss2(endTime);
-
-    ss1 >> std::get_time(&tm1, "%H:%M:%S");
-    ss2 >> std::get_time(&tm2, "%H:%M:%S");
-
-    int seconds1 = tm1.tm_hour * 3600 + tm1.tm_min * 60 + tm1.tm_sec;
-    int seconds2 = tm2.tm_hour * 3600 + tm2.tm_min * 60 + tm2.tm_sec;
-
-    return seconds2 - seconds1;
+    std::tm t1 = {}, t2 = {};
+    std::istringstream s1(from), s2(to);
+    s1 >> std::get_time(&t1, "%H:%M:%S");
+    s2 >> std::get_time(&t2, "%H:%M:%S");
+    return (t2.tm_hour * 3600 + t2.tm_min * 60 + t2.tm_sec) - (t1.tm_hour * 3600 + t1.tm_min * 60 + t1.tm_sec);
 }
 
-Call parseCall(const string& line)
-{
-    std::istringstream iss(line);
-    string cmd, fromNumber, toNumber, date, fromTime, endTime;
+class CallStore {
+public:
+    void add(const Call& c)
+    {
+        calls_.push_back(c);
 
-    iss >> cmd >> fromNumber >> toNumber >> date >> fromTime >> endTime;
-
-    int duration = calculateDuration(fromTime, endTime);
-
-    return { fromNumber, toNumber, date, fromTime, endTime, duration };
-}
-
-vector<Call> readCallData()
-{
-    vector<Call> calls;
-    string line;
-
-    while (getline(cin, line) && line != "#") {
-        if (line.empty())
-            continue;
-        calls.push_back(parseCall(line));
-    }
-
-    return calls;
-}
-
-void processQueries(const vector<Call>& calls)
-{
-    string line;
-
-    bool allValidPhoneNumbers = true;
-    int totalCalls = calls.size();
-    unordered_map<string, int> callsFromNumber;
-    unordered_map<string, int> durationFromNumber;
-
-    for (const auto& call : calls) {
-        if (!isValidPhoneNumber(call.fromNumber) || !isValidPhoneNumber(call.toNumber)) {
-            allValidPhoneNumbers = false;
+        if (!isValidPhoneNumber(c.fromNumber) || !isValidPhoneNumber(c.toNumber)) {
+            allValid_ = false;
         }
 
-        callsFromNumber[call.fromNumber]++;
-        durationFromNumber[call.fromNumber] += call.durationSeconds;
+        callCount_[c.fromNumber]++;
+        duration_[c.fromNumber] += c.durationSeconds;
     }
 
-    while (getline(cin, line) && line != "#") {
-        if (line.empty())
-            continue;
+    int total() const { return static_cast<int>(calls_.size()); }
 
-        std::istringstream iss(line);
-        string queryType;
-        iss >> queryType;
+    bool allValid() const { return allValid_; }
 
-        if (queryType == "?check_phone_number") {
-            cout << (allValidPhoneNumbers ? 1 : 0) << endl;
-        } else if (queryType == "?number_calls_from") {
-            string phoneNumber;
-            iss >> phoneNumber;
-            cout << callsFromNumber[phoneNumber] << endl;
-        } else if (queryType == "?number_total_calls") {
-            cout << totalCalls << endl;
-        } else if (queryType == "?count_time_calls_from") {
-            string phoneNumber;
-            iss >> phoneNumber;
-            cout << durationFromNumber[phoneNumber] << endl;
-        }
+    int callsFrom(const std::string& number) const
+    {
+        auto it = callCount_.find(number);
+        return it != callCount_.end() ? it->second : 0;
     }
-}
+
+    int durationFrom(const std::string& number) const
+    {
+        auto it = duration_.find(number);
+        return it != duration_.end() ? it->second : 0;
+    }
+
+private:
+    std::vector<Call> calls_;
+    bool allValid_ = true;
+    std::unordered_map<std::string, int> callCount_;
+    std::unordered_map<std::string, int> duration_;
+};
 
 int main()
 {
-    vector<Call> calls = readCallData();
+    CallStore store;
 
-    processQueries(calls);
+    std::string line;
+    while (std::getline(std::cin, line) && line != "#") {
+        if (line.empty())
+            continue;
+
+        std::istringstream ss(line);
+        std::string cmd;
+        Call c;
+        ss >> cmd >> c.fromNumber >> c.toNumber >> c.date >> c.fromTime >> c.endTime;
+        c.durationSeconds = calculateDuration(c.fromTime, c.endTime);
+        store.add(c);
+    }
+
+    while (std::getline(std::cin, line) && line != "#") {
+        if (line.empty())
+            continue;
+
+        std::istringstream ss(line);
+        std::string query;
+        ss >> query;
+
+        if (query == "?check_phone_number") {
+            std::cout << (store.allValid() ? 1 : 0) << '\n';
+        } else if (query == "?number_calls_from") {
+            std::string num;
+            ss >> num;
+            std::cout << store.callsFrom(num) << '\n';
+        } else if (query == "?number_total_calls") {
+            std::cout << store.total() << '\n';
+        } else if (query == "?count_time_calls_from") {
+            std::string num;
+            ss >> num;
+            std::cout << store.durationFrom(num) << '\n';
+        }
+    }
 
     return 0;
 }
