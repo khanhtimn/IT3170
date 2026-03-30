@@ -28,6 +28,33 @@ Output
 #include <vector>
 
 struct CBusSolver {
+    int solve(int n_cities, int k_places, const std::vector<std::vector<int>>& cost_matrix) {
+        n = n_cities;
+        k = k_places;
+        c = cost_matrix;
+
+        x.assign(2 * n + 1, 0);
+        appear.assign(2 * n + 1, false);
+        load = 0;
+        cost = 0;
+        c_min = INT_MAX;
+        min_edge = INT_MAX;
+
+        for(int i = 0; i <= 2 * n; i++) {
+            for(int j = 0; j <= 2 * n; j++) {
+                if(i != j && c[i][j] < min_edge) {
+                    min_edge = c[i][j];
+                }
+            }
+        }
+
+        x[0] = 0;
+        try_route(1);
+
+        return c_min;
+    }
+
+private:
     int n, k;
     std::vector<std::vector<int>> c;
     std::vector<int> x;
@@ -84,38 +111,7 @@ struct CBusSolver {
             }
         }
     }
-
-    int solve(int n_cities, int k_places, const std::vector<std::vector<int>>& cost_matrix) {
-        n = n_cities;
-        k = k_places;
-        c = cost_matrix;
-
-        x.assign(2 * n + 1, 0);
-        appear.assign(2 * n + 1, false);
-        load = 0;
-        cost = 0;
-        c_min = INT_MAX;
-        min_edge = INT_MAX;
-
-        for(int i = 0; i <= 2 * n; i++) {
-            for(int j = 0; j <= 2 * n; j++) {
-                if(i != j && c[i][j] < min_edge) {
-                    min_edge = c[i][j];
-                }
-            }
-        }
-
-        x[0] = 0;
-        try_route(1);
-
-        return c_min;
-    }
 };
-
-int cbus_solve_wrapper(int n, int k, const std::vector<std::vector<int>>& c) {
-    CBusSolver solver;
-    return solver.solve(n, k, c);
-}
 
 int main() {
     int n, k;

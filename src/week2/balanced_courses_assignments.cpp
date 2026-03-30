@@ -53,14 +53,30 @@ Output
 #include <vector>
 
 struct BalancedCoursesSolver {
-    int m, n;
-    std::vector<std::vector<bool>> can_teach;
-    std::vector<std::vector<bool>> conflicts;
-    std::vector<int> assignment;
-    std::vector<int> load;
-    int best_max_load;
-    bool solution_found;
+    int solve(int num_teachers,
+              int num_courses,
+              const std::vector<std::vector<bool>>& teach_matrix,
+              const std::vector<std::vector<bool>>& conflict_matrix) {
+        m = num_teachers;
+        n = num_courses;
+        can_teach = teach_matrix;
+        conflicts = conflict_matrix;
 
+        assignment.assign(n + 1, 0);
+        load.assign(m + 1, 0);
+        best_max_load = INT_MAX;
+        solution_found = false;
+
+        try_assignment(1);
+
+        if(solution_found) {
+            return best_max_load;
+        } else {
+            return -1;
+        }
+    }
+
+private:
     bool has_conflict(int t, int c) {
         for(int i = 1; i < c; ++i) {
             if(assignment[i] == t && conflicts[c][i]) {
@@ -95,28 +111,13 @@ struct BalancedCoursesSolver {
         }
     }
 
-    int solve(int num_teachers,
-              int num_courses,
-              const std::vector<std::vector<bool>>& teach_matrix,
-              const std::vector<std::vector<bool>>& conflict_matrix) {
-        m = num_teachers;
-        n = num_courses;
-        can_teach = teach_matrix;
-        conflicts = conflict_matrix;
-
-        assignment.assign(n + 1, 0);
-        load.assign(m + 1, 0);
-        best_max_load = INT_MAX;
-        solution_found = false;
-
-        try_assignment(1);
-
-        if(solution_found) {
-            return best_max_load;
-        } else {
-            return -1;
-        }
-    }
+    int m, n;
+    std::vector<std::vector<bool>> can_teach;
+    std::vector<std::vector<bool>> conflicts;
+    std::vector<int> assignment;
+    std::vector<int> load;
+    int best_max_load;
+    bool solution_found;
 };
 
 int balanced_courses_solve_wrapper(int m,

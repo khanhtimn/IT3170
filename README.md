@@ -5,7 +5,6 @@ Bài tập trên trang hustack.soict.ai của lớp IT3170 - Thuật toán ứng
 
 - `src/`: Thư mục chứa mã nguồn
   - `week*/`: Bài tập theo tuần
-  - `testing/`: Framework test
 - `tests/`: Thư mục chứa test cases
   - `week*/`: Test cases cho từng tuần
 - `build/`: Thư mục chứa file biên dịch
