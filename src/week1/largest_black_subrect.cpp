@@ -24,17 +24,13 @@ Output
 #include <stack>
 #include <vector>
 
-using std::stack;
-using std::vector;
-
-vector<vector<int>> readMatrix()
-{
+std::vector<std::vector<int>> readMatrix() {
     int n, m;
     std::cin >> n >> m;
 
-    vector<vector<int>> matrix(n, vector<int>(m));
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < m; j++) {
+    std::vector<std::vector<int>> matrix(n, std::vector<int>(m));
+    for(int i = 0; i < n; i++) {
+        for(int j = 0; j < m; j++) {
             std::cin >> matrix[i][j];
         }
     }
@@ -42,25 +38,24 @@ vector<vector<int>> readMatrix()
     return matrix;
 }
 
-int largestRectangleInHistogram(const vector<int>& heights)
-{
+int largestRectangleInHistogram(const std::vector<int>& heights) {
     int m = heights.size();
-    vector<int> left(m), right(m);
-    stack<int> s;
+    std::vector<int> left(m), right(m);
+    std::stack<int> s;
 
-    for (int i = 0; i < m; i++) {
-        while (!s.empty() && heights[s.top()] >= heights[i]) {
+    for(int i = 0; i < m; i++) {
+        while(!s.empty() && heights[s.top()] >= heights[i]) {
             s.pop();
         }
         left[i] = s.empty() ? -1 : s.top();
         s.push(i);
     }
 
-    while (!s.empty())
+    while(!s.empty())
         s.pop();
 
-    for (int i = m - 1; i >= 0; i--) {
-        while (!s.empty() && heights[s.top()] >= heights[i]) {
+    for(int i = m - 1; i >= 0; i--) {
+        while(!s.empty() && heights[s.top()] >= heights[i]) {
             s.pop();
         }
         right[i] = s.empty() ? m : s.top();
@@ -68,27 +63,26 @@ int largestRectangleInHistogram(const vector<int>& heights)
     }
 
     int maxArea = 0;
-    for (int i = 0; i < m; i++) {
+    for(int i = 0; i < m; i++) {
         maxArea = std::max(maxArea, heights[i] * (right[i] - left[i] - 1));
     }
 
     return maxArea;
 }
 
-int findLargestBlackSubrectangle(const vector<vector<int>>& matrix)
-{
-    if (matrix.empty())
+int findLargestBlackSubrectangle(const std::vector<std::vector<int>>& matrix) {
+    if(matrix.empty())
         return 0;
 
     int n = matrix.size();
     int m = matrix[0].size();
 
-    vector<int> heights(m, 0);
+    std::vector<int> heights(m, 0);
 
     int maxArea = 0;
 
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < m; j++) {
+    for(int i = 0; i < n; i++) {
+        for(int j = 0; j < m; j++) {
             heights[j] = matrix[i][j] == 0 ? 0 : heights[j] + 1;
         }
 
@@ -98,9 +92,8 @@ int findLargestBlackSubrectangle(const vector<vector<int>>& matrix)
     return maxArea;
 }
 
-int main()
-{
-    vector<vector<int>> matrix = readMatrix();
+int main() {
+    std::vector<std::vector<int>> matrix = readMatrix();
 
     int result = findLargestBlackSubrectangle(matrix);
 

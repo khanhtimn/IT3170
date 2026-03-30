@@ -34,55 +34,45 @@ Output
 #include <iostream>
 #include <vector>
 
-using std::cin;
-using std::cout;
-using std::endl;
-using std::vector;
-
 void dfs_first(int vertex,
-    const vector<vector<int>>& graph,
-    vector<bool>& visited,
-    vector<int>& finish_order)
-{
+               const std::vector<std::vector<int>>& graph,
+               std::vector<bool>& visited,
+               std::vector<int>& finish_order) {
     visited[vertex] = true;
-    for (int neighbor : graph[vertex]) {
-        if (!visited[neighbor]) {
+    for(int neighbor : graph[vertex]) {
+        if(!visited[neighbor]) {
             dfs_first(neighbor, graph, visited, finish_order);
         }
     }
     finish_order.push_back(vertex);
 }
 
-void dfs_second(int vertex,
-    const vector<vector<int>>& transpose,
-    vector<bool>& visited)
-{
+void dfs_second(int vertex, const std::vector<std::vector<int>>& transpose, std::vector<bool>& visited) {
     visited[vertex] = true;
-    for (int neighbor : transpose[vertex]) {
-        if (!visited[neighbor]) {
+    for(int neighbor : transpose[vertex]) {
+        if(!visited[neighbor]) {
             dfs_second(neighbor, transpose, visited);
         }
     }
 }
 
-int count_strongly_connected_components(const vector<vector<int>>& graph,
-    const vector<vector<int>>& transpose,
-    int num_vertices)
-{
-    vector<bool> visited(num_vertices + 1, false);
-    vector<int> finish_order;
+int count_strongly_connected_components(const std::vector<std::vector<int>>& graph,
+                                        const std::vector<std::vector<int>>& transpose,
+                                        int num_vertices) {
+    std::vector<bool> visited(num_vertices + 1, false);
+    std::vector<int> finish_order;
     int num_components = 0;
 
-    for (int i = 1; i <= num_vertices; ++i) {
-        if (!visited[i]) {
+    for(int i = 1; i <= num_vertices; ++i) {
+        if(!visited[i]) {
             dfs_first(i, graph, visited, finish_order);
         }
     }
 
     std::fill(visited.begin(), visited.end(), false);
 
-    for (auto it = finish_order.rbegin(); it != finish_order.rend(); ++it) {
-        if (!visited[*it]) {
+    for(auto it = finish_order.rbegin(); it != finish_order.rend(); ++it) {
+        if(!visited[*it]) {
             dfs_second(*it, transpose, visited);
             ++num_components;
         }
@@ -91,24 +81,20 @@ int count_strongly_connected_components(const vector<vector<int>>& graph,
     return num_components;
 }
 
-int main()
-{
-    std::ios::sync_with_stdio(false);
-    std::cin.tie(nullptr);
-
+int main() {
     int num_vertices, num_edges;
-    cin >> num_vertices >> num_edges;
+    std::cin >> num_vertices >> num_edges;
 
-    vector<vector<int>> graph(num_vertices + 1);
-    vector<vector<int>> transpose(num_vertices + 1);
+    std::vector<std::vector<int>> graph(num_vertices + 1);
+    std::vector<std::vector<int>> transpose(num_vertices + 1);
 
-    for (int i = 0; i < num_edges; ++i) {
+    for(int i = 0; i < num_edges; ++i) {
         int from, to;
-        cin >> from >> to;
+        std::cin >> from >> to;
         graph[from].push_back(to);
         transpose[to].push_back(from);
     }
 
-    cout << count_strongly_connected_components(graph, transpose, num_vertices) << endl;
+    std::cout << count_strongly_connected_components(graph, transpose, num_vertices) << std::endl;
     return 0;
 }

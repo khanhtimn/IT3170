@@ -22,22 +22,16 @@ Output
 #include <iostream>
 #include <vector>
 
-using std::cin;
-using std::cout;
-using std::endl;
-using std::vector;
-
 constexpr int MOD = 1e9 + 7;
 
-int count_working_plans(int total_days, int min_work_days, int max_work_days)
-{
-    vector<vector<int>> dp(total_days + 1, vector<int>(2, 0));
+int count_working_plans(int total_days, int min_work_days, int max_work_days) {
+    std::vector<std::vector<int>> dp(total_days + 1, std::vector<int>(2, 0));
 
     dp[0][0] = dp[0][1] = 1;
 
-    for (int day = 1; day <= total_days; ++day) {
-        for (int work_days = min_work_days; work_days <= max_work_days; ++work_days) {
-            if (day - work_days >= 0) {
+    for(int day = 1; day <= total_days; ++day) {
+        for(int work_days = min_work_days; work_days <= max_work_days; ++work_days) {
+            if(day - work_days >= 0) {
                 dp[day][1] = (dp[day][1] + dp[day - work_days][0]) % MOD;
             }
         }
@@ -48,14 +42,10 @@ int count_working_plans(int total_days, int min_work_days, int max_work_days)
     return (dp[total_days][0] + dp[total_days][1]) % MOD;
 }
 
-int main()
-{
-    std::ios::sync_with_stdio(false);
-    std::cin.tie(nullptr);
-
+int main() {
     int total_days, min_work_days, max_work_days;
-    cin >> total_days >> min_work_days >> max_work_days;
+    std::cin >> total_days >> min_work_days >> max_work_days;
 
-    cout << count_working_plans(total_days, min_work_days, max_work_days) << endl;
+    std::cout << count_working_plans(total_days, min_work_days, max_work_days) << std::endl;
     return 0;
 }

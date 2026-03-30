@@ -23,24 +23,18 @@ Output
 #include <limits>
 #include <vector>
 
-using std::cin;
-using std::cout;
-using std::endl;
-using std::vector;
-
 const long long INF = std::numeric_limits<long long>::max();
 
-long long find_max_even_subsequence(const vector<long long>& numbers)
-{
+long long find_max_even_subsequence(const std::vector<long long>& numbers) {
     long long max_weight = -INF;
     long long min_odd_sum = INF;
     long long min_even_sum = 0;
     long long prefix_sum = 0;
 
-    for (const long long num : numbers) {
+    for(const long long num : numbers) {
         prefix_sum += num;
 
-        if (prefix_sum % 2 == 0) {
+        if(prefix_sum % 2 == 0) {
             max_weight = std::max(max_weight, prefix_sum - min_even_sum);
             min_even_sum = std::min(min_even_sum, prefix_sum);
         } else {
@@ -52,24 +46,20 @@ long long find_max_even_subsequence(const vector<long long>& numbers)
     return max_weight;
 }
 
-int main()
-{
-    std::ios::sync_with_stdio(false);
-    std::cin.tie(nullptr);
-
+int main() {
     int n;
-    cin >> n;
+    std::cin >> n;
 
-    vector<long long> numbers(n);
-    for (int i = 0; i < n; ++i) {
-        cin >> numbers[i];
+    std::vector<long long> numbers(n);
+    for(int i = 0; i < n; ++i) {
+        std::cin >> numbers[i];
     }
 
     long long result = find_max_even_subsequence(numbers);
-    if (result == -INF) {
+    if(result == -INF) {
         return 1;
     } else {
-        cout << result << endl;
+        std::cout << result << std::endl;
     }
 
     return 0;

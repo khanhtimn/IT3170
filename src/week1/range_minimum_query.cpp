@@ -26,45 +26,60 @@ Output
 */
 
 #include <algorithm>
+#include <cmath>
 #include <iostream>
-#include <tuple>
 #include <vector>
 
-int min_in_range(const std::vector<int>& a, std::vector<std::tuple<int, int, int>>& pairs)
-{
-    int sum = 0;
-    for (auto& p : pairs) {
-        std::get<2>(p) = *std::min_element(a.begin() + std::get<0>(p), a.begin() + std::get<1>(p) + 1);
-    }
-
-    for (const auto& [start, end, min] : pairs) {
-        sum += min;
-    }
-    return sum;
-}
-
-int main()
-{
+struct SparseTable {
     int n;
-    std::cin >> n;
-    std::vector<int> a(n);
+    std::vector<std::vector<int>> st;
 
-    for (int i = 0; i < n; ++i) {
+    SparseTable(const std::vector<int>& arr)
+        : n((int)arr.size()) {
+        int max_log = std::log2(n) + 1;
+        st.assign(n, std::vector<int>(max_log));
+
+        for(int i = 0; i < n; i++) {
+            st[i][0] = arr[i];
+        }
+
+        for(int j = 1; (1 << j) <= n; j++) {
+            for(int i = 0; i + (1 << j) <= n; i++) {
+                st[i][j] = std::min(st[i][j - 1], st[i + (1 << (j - 1))][j - 1]);
+            }
+        }
+    }
+
+    int query(int L, int R) const {
+        int len = R - L + 1;
+        int k = std::log2(len);
+        return std::min(st[L][k], st[R - (1 << k) + 1][k]);
+    }
+};
+
+int main() {
+    int n;
+    if(!(std::cin >> n))
+        return 0;
+
+    std::vector<int> a(n);
+    for(int i = 0; i < n; ++i) {
         std::cin >> a[i];
     }
 
-    int m;
-    std::cin >> m;
-    std::vector<std::tuple<int, int, int>> pairs;
+    SparseTable solver(a);
 
-    for (int i = 0; i < m; ++i) {
+    int m;
+    if(!(std::cin >> m))
+        return 0;
+
+    long long sum = 0;
+    for(int i = 0; i < m; ++i) {
         int start, end;
-        std::cin >> start;
-        std::cin >> end;
-        pairs.push_back(std::make_tuple(start, end, 0));
+        std::cin >> start >> end;
+        sum += solver.query(start, end);
     }
 
-    std::cout << min_in_range(a, pairs) << "\n";
-
+    std::cout << sum << "\n";
     return 0;
 }

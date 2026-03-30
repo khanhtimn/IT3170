@@ -6,12 +6,7 @@ a1X1 + a2X2 + . . . + anXn = M
 
 Input
 Dòng 1: n và M
-Dòng 2: a
-1
-, a
-2
-, ..., a
-n
+Dòng 2: a1, a2, ..., an
 Output
    Số nghiệm nguyên dương
 Ví dụ
@@ -23,31 +18,33 @@ Output
 */
 
 #include <iostream>
+#include <numeric>
 #include <vector>
 
-int countSolutions(int a[], int n, int M, int pos)
-{
-    if (M == 0 && pos == n)
-        return 1;
-    if (M <= 0 || pos == n)
+int count_solutions(std::vector<int>& a, int n, int M) {
+    int sumA = std::accumulate(a.begin(), a.end(), 0);
+    if(M < sumA)
         return 0;
 
-    int solutions = 0;
-    for (int i = 1; i <= M; i++) {
-        solutions += countSolutions(a, n, M - a[pos] * i, pos + 1);
-    }
+    int R = M - sumA;
+    std::vector<long long> dp(R + 1, 0);
+    dp[0] = 1;
 
-    return solutions;
+    for(int coin : a) {
+        for(int s = coin; s <= R; ++s) {
+            dp[s] += dp[s - coin];
+        }
+    }
+    return dp[R];
 }
 
-int main()
-{
+int main() {
     int n, M;
     std::cin >> n >> M;
     std::vector<int> a(n);
-    for (int i = 0; i < n; i++)
-        std::cin >> a[i];
+    for(int& x : a)
+        std::cin >> x;
 
-    std::cout << countSolutions(a.data(), n, M, 0) << std::endl;
+    std::cout << count_solutions(a, n, M) << std::endl;
     return 0;
 }

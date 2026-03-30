@@ -27,33 +27,23 @@ Output
 #include <utility>
 #include <vector>
 
-using segment = std::pair<int, int>;
-
-bool compare_segments(const segment& a, const segment& b)
-{
-    if (a.second != b.second)
+bool compare_segments(const std::pair<int, int>& a, const std::pair<int, int>& b) {
+    if(a.second != b.second)
         return a.second < b.second;
     return a.first < b.first;
 }
 
-void sort_segments(std::vector<segment>& segments)
-{
-    std::sort(segments.begin(),
-        segments.end(),
-        compare_segments);
+void sort_segments(std::vector<std::pair<int, int>>& segments) {
+    std::sort(segments.begin(), segments.end(), compare_segments);
 }
 
-int main()
-{
-    std::ios::sync_with_stdio(false);
-    std::cin.tie(nullptr);
-
+int main() {
     int n;
     std::cin >> n;
-    std::vector<segment> segments;
+    std::vector<std::pair<int, int>> segments;
     segments.reserve(n);
 
-    for (int i = 0; i < n; ++i) {
+    for(int i = 0; i < n; ++i) {
         int a, b;
         std::cin >> a >> b;
         segments.emplace_back(a, b);
@@ -63,8 +53,8 @@ int main()
 
     int count = 0;
     int last = 0;
-    for (auto& segment : segments) {
-        if (segment.first > last) {
+    for(auto& segment : segments) {
+        if(segment.first > last) {
             ++count;
             last = segment.second;
         }

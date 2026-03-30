@@ -35,105 +35,79 @@ Output
 #include <iostream>
 #include <vector>
 
-using std::cin;
-using std::cout;
-using std::endl;
-using std::vector;
-
 void dfs(int vertex,
-    const vector<vector<int>>& adj,
-    vector<int>& discovery_time,
-    vector<int>& low_value,
-    vector<int>& parent,
-    vector<bool>& is_articulation_point,
-    int& num_bridges,
-    int& current_time)
-{
+         const std::vector<std::vector<int>>& adj,
+         std::vector<int>& discovery_time,
+         std::vector<int>& low_value,
+         std::vector<int>& parent,
+         std::vector<bool>& is_articulation_point,
+         int& num_bridges,
+         int& current_time) {
     discovery_time[vertex] = low_value[vertex] = ++current_time;
     int num_children = 0;
 
-    for (int neighbor : adj[vertex]) {
-        if (discovery_time[neighbor] == 0) {
+    for(int neighbor : adj[vertex]) {
+        if(discovery_time[neighbor] == 0) {
             num_children++;
             parent[neighbor] = vertex;
-            dfs(neighbor,
-                adj,
-                discovery_time,
-                low_value,
-                parent,
-                is_articulation_point,
-                num_bridges,
-                current_time);
+            dfs(neighbor, adj, discovery_time, low_value, parent, is_articulation_point, num_bridges, current_time);
 
             low_value[vertex] = std::min(low_value[vertex], low_value[neighbor]);
 
-            if (discovery_time[vertex] < low_value[neighbor]) {
+            if(discovery_time[vertex] < low_value[neighbor]) {
                 num_bridges++;
             }
 
-            if (parent[vertex] == vertex && num_children >= 2) {
+            if(parent[vertex] == vertex && num_children >= 2) {
                 is_articulation_point[vertex] = true;
             }
-            if (parent[vertex] != vertex && low_value[neighbor] >= discovery_time[vertex]) {
+            if(parent[vertex] != vertex && low_value[neighbor] >= discovery_time[vertex]) {
                 is_articulation_point[vertex] = true;
             }
-        } else if (parent[vertex] != neighbor) {
+        } else if(parent[vertex] != neighbor) {
             low_value[vertex] = std::min(low_value[vertex], discovery_time[neighbor]);
         }
     }
 }
 
-std::pair<int, int> find_articulation_points_and_bridges(const vector<vector<int>>& adj, int num_vertices)
-{
-    vector<int> discovery_time(num_vertices + 1, 0);
-    vector<int> low_value(num_vertices + 1, 0);
-    vector<int> parent(num_vertices + 1);
-    vector<bool> is_articulation_point(num_vertices + 1, false);
+std::pair<int, int> find_articulation_points_and_bridges(const std::vector<std::vector<int>>& adj, int num_vertices) {
+    std::vector<int> discovery_time(num_vertices + 1, 0);
+    std::vector<int> low_value(num_vertices + 1, 0);
+    std::vector<int> parent(num_vertices + 1);
+    std::vector<bool> is_articulation_point(num_vertices + 1, false);
     int num_bridges = 0;
     int current_time = 0;
 
-    for (int i = 1; i <= num_vertices; ++i) {
+    for(int i = 1; i <= num_vertices; ++i) {
         parent[i] = i;
     }
 
-    for (int i = 1; i <= num_vertices; ++i) {
-        if (discovery_time[i] == 0) {
-            dfs(i,
-                adj,
-                discovery_time,
-                low_value,
-                parent,
-                is_articulation_point,
-                num_bridges,
-                current_time);
+    for(int i = 1; i <= num_vertices; ++i) {
+        if(discovery_time[i] == 0) {
+            dfs(i, adj, discovery_time, low_value, parent, is_articulation_point, num_bridges, current_time);
         }
     }
 
-    int num_articulation_points = std::count(
-        is_articulation_point.begin(), is_articulation_point.end(), true);
+    int num_articulation_points = std::count(is_articulation_point.begin(), is_articulation_point.end(), true);
 
     return { num_articulation_points, num_bridges };
 }
 
-int main()
-{
-    std::ios::sync_with_stdio(false);
-    std::cin.tie(nullptr);
-
+int main() {
     int num_vertices, num_edges;
-    cin >> num_vertices >> num_edges;
+    std::cin >> num_vertices >> num_edges;
 
-    vector<vector<int>> adj(num_vertices + 1);
+    std::vector<std::vector<int>> adj(num_vertices + 1);
 
-    for (int i = 0; i < num_edges; ++i) {
+    for(int i = 0; i < num_edges; ++i) {
         int u, v;
-        cin >> u >> v;
+        std::cin >> u >> v;
         adj[u].push_back(v);
         adj[v].push_back(u);
     }
 
     auto [num_articulation_points, num_bridges] = find_articulation_points_and_bridges(adj, num_vertices);
-    cout << num_articulation_points << " " << num_bridges << endl;
+    std::cout << num_articulation_points << " " << num_bridges << std::endl;
 
     return 0;
 }

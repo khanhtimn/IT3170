@@ -27,20 +27,14 @@ Output
 #include <iostream>
 #include <vector>
 
-using std::cin;
-using std::cout;
-using std::endl;
-using std::vector;
-
-int find_max_goods(const vector<int>& goods, const vector<int>& times, int max_time, int max_distance)
-{
+int find_max_goods(const std::vector<int>& goods, const std::vector<int>& times, int max_time, int max_distance) {
     const int n = goods.size();
-    vector<vector<int>> dp(n + 1, vector<int>(max_time + 1, 0));
+    std::vector<std::vector<int>> dp(n + 1, std::vector<int>(max_time + 1, 0));
     int max_goods = 0;
 
-    for (int i = 1; i <= n; ++i) {
-        for (int time = times[i - 1]; time <= max_time; ++time) {
-            for (int j = std::max(0, i - max_distance); j < i; ++j) {
+    for(int i = 1; i <= n; ++i) {
+        for(int time = times[i - 1]; time <= max_time; ++time) {
+            for(int j = std::max(0, i - max_distance); j < i; ++j) {
                 dp[i][time] = std::max(dp[i][time], dp[j][time - times[i - 1]] + goods[i - 1]);
             }
             max_goods = std::max(max_goods, dp[i][time]);
@@ -50,24 +44,20 @@ int find_max_goods(const vector<int>& goods, const vector<int>& times, int max_t
     return max_goods;
 }
 
-int main()
-{
-    std::ios::sync_with_stdio(false);
-    std::cin.tie(nullptr);
-
+int main() {
     int n, max_time, max_distance;
-    cin >> n >> max_time >> max_distance;
+    std::cin >> n >> max_time >> max_distance;
 
-    vector<int> goods(n);
-    vector<int> times(n);
+    std::vector<int> goods(n);
+    std::vector<int> times(n);
 
-    for (int i = 0; i < n; ++i) {
-        cin >> goods[i];
+    for(int i = 0; i < n; ++i) {
+        std::cin >> goods[i];
     }
-    for (int i = 0; i < n; ++i) {
-        cin >> times[i];
+    for(int i = 0; i < n; ++i) {
+        std::cin >> times[i];
     }
 
-    cout << find_max_goods(goods, times, max_time, max_distance) << endl;
+    std::cout << find_max_goods(goods, times, max_time, max_distance) << std::endl;
     return 0;
 }
