@@ -1,0 +1,30 @@
+#include <catch2/catch_test_macros.hpp>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include "test_utils.hpp"
+
+int @PROG_MAIN@();
+
+#define RUN_IO_TEST(test_file_path) \
+    SECTION(test_file_path) { \
+        auto io = TestUtils::parse_test_file(test_file_path); \
+        std::istringstream in(io.input); \
+        std::ostringstream out; \
+        auto cinbuf = std::cin.rdbuf(in.rdbuf()); \
+        auto coutbuf = std::cout.rdbuf(out.rdbuf()); \
+        try { \
+            @PROG_MAIN@(); \
+        } catch(...) { \
+            std::cin.rdbuf(cinbuf); \
+            std::cout.rdbuf(coutbuf); \
+            throw; \
+        } \
+        std::cin.rdbuf(cinbuf); \
+        std::cout.rdbuf(coutbuf); \
+        REQUIRE(TestUtils::compare_tokens(out.str(), io.expected_output)); \
+    }
+
+TEST_CASE("@PROG_NAME@ Tests", "[@WEEK_NAME@]") {
+@TEST_CASES_GEN@
+}

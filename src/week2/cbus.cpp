@@ -27,89 +27,110 @@ Output
 #include <iostream>
 #include <vector>
 
-using std::vector;
+struct CBusSolver {
+    int n, k;
+    std::vector<std::vector<int>> c;
+    std::vector<int> x;
+    std::vector<bool> appear;
+    int load;
+    int cost;
+    int c_min;
+    int min_edge;
 
-int n, k;
-vector<vector<int>> c;
-vector<int> x;
-vector<bool> appear;
-int load = 0;
-int cost = 0;
-int c_min = INT_MAX;
-int min_edge = INT_MAX;
+    bool is_valid(int v) {
+        if(appear[v])
+            return false;
 
-bool is_valid(int v)
-{
-    if (appear[v])
-        return false;
-
-    if (v <= n) {
-        return load < k;
-    } else {
-        return appear[v - n];
-    }
-}
-
-void try_route(int pos)
-{
-    if (pos > 2 * n) {
-        int total_cost = cost + c[x[pos - 1]][0];
-        if (total_cost < c_min) {
-            c_min = total_cost;
+        if(v <= n) {
+            return load < k;
+        } else {
+            return appear[v - n];
         }
-        return;
     }
 
-    for (int v = 1; v <= 2 * n; v++) {
-        if (is_valid(v)) {
-            x[pos] = v;
-            appear[v] = true;
-
-            int old_cost = cost;
-            cost += c[x[pos - 1]][v];
-
-            if (v <= n)
-                load++;
-            else
-                load--;
-
-            int lower_bound = cost + (2 * n + 1 - pos) * min_edge;
-            if (lower_bound < c_min) {
-                try_route(pos + 1);
+    void try_route(int pos) {
+        if(pos > 2 * n) {
+            int total_cost = cost + c[x[pos - 1]][0];
+            if(total_cost < c_min) {
+                c_min = total_cost;
             }
+            return;
+        }
 
-            appear[v] = false;
-            cost = old_cost;
-            if (v <= n)
-                load--;
-            else
-                load++;
+        for(int v = 1; v <= 2 * n; v++) {
+            if(is_valid(v)) {
+                x[pos] = v;
+                appear[v] = true;
+
+                int old_cost = cost;
+                cost += c[x[pos - 1]][v];
+
+                if(v <= n)
+                    load++;
+                else
+                    load--;
+
+                int lower_bound = cost + (2 * n + 1 - pos) * min_edge;
+                if(lower_bound < c_min) {
+                    try_route(pos + 1);
+                }
+
+                appear[v] = false;
+                cost = old_cost;
+                if(v <= n)
+                    load--;
+                else
+                    load++;
+            }
         }
     }
+
+    int solve(int n_cities, int k_places, const std::vector<std::vector<int>>& cost_matrix) {
+        n = n_cities;
+        k = k_places;
+        c = cost_matrix;
+
+        x.assign(2 * n + 1, 0);
+        appear.assign(2 * n + 1, false);
+        load = 0;
+        cost = 0;
+        c_min = INT_MAX;
+        min_edge = INT_MAX;
+
+        for(int i = 0; i <= 2 * n; i++) {
+            for(int j = 0; j <= 2 * n; j++) {
+                if(i != j && c[i][j] < min_edge) {
+                    min_edge = c[i][j];
+                }
+            }
+        }
+
+        x[0] = 0;
+        try_route(1);
+
+        return c_min;
+    }
+};
+
+int cbus_solve_wrapper(int n, int k, const std::vector<std::vector<int>>& c) {
+    CBusSolver solver;
+    return solver.solve(n, k, c);
 }
 
-int main()
-{
-    std::cin >> n >> k;
+int main() {
+    int n, k;
+    if(!(std::cin >> n >> k))
+        return 0;
 
-    c.resize(2 * n + 1, vector<int>(2 * n + 1));
-    x.resize(2 * n + 1);
-    appear.resize(2 * n + 1, false);
-
-    for (int i = 0; i <= 2 * n; i++) {
-        for (int j = 0; j <= 2 * n; j++) {
+    std::vector<std::vector<int>> c(2 * n + 1, std::vector<int>(2 * n + 1));
+    for(int i = 0; i <= 2 * n; i++) {
+        for(int j = 0; j <= 2 * n; j++) {
             std::cin >> c[i][j];
-            if (i != j && c[i][j] < min_edge) {
-                min_edge = c[i][j];
-            }
         }
     }
 
-    x[0] = 0;
-
-    try_route(1);
-
-    std::cout << c_min << std::endl;
+    CBusSolver solver;
+    std::cout << solver.solve(n, k, c) << std::endl;
 
     return 0;
 }

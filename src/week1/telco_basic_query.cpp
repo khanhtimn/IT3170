@@ -53,14 +53,11 @@ struct Call {
     int durationSeconds;
 };
 
-static bool isValidPhoneNumber(const std::string& number)
-{
+static bool isValidPhoneNumber(const std::string& number) {
     return number.length() == 10 && number.find_first_not_of("0123456789") == std::string::npos;
 }
 
-static int calculateDuration(
-    const std::string& from, const std::string& to)
-{
+static int calculateDuration(const std::string& from, const std::string& to) {
     std::tm t1 = {}, t2 = {};
     std::istringstream s1(from), s2(to);
     s1 >> std::get_time(&t1, "%H:%M:%S");
@@ -68,13 +65,11 @@ static int calculateDuration(
     return (t2.tm_hour * 3600 + t2.tm_min * 60 + t2.tm_sec) - (t1.tm_hour * 3600 + t1.tm_min * 60 + t1.tm_sec);
 }
 
-class CallStore {
-public:
-    void add(const Call& c)
-    {
+struct CallStore {
+    void add(const Call& c) {
         calls_.push_back(c);
 
-        if (!isValidPhoneNumber(c.fromNumber) || !isValidPhoneNumber(c.toNumber)) {
+        if(!isValidPhoneNumber(c.fromNumber) || !isValidPhoneNumber(c.toNumber)) {
             allValid_ = false;
         }
 
@@ -82,18 +77,20 @@ public:
         duration_[c.fromNumber] += c.durationSeconds;
     }
 
-    int total() const { return static_cast<int>(calls_.size()); }
+    int total() const {
+        return static_cast<int>(calls_.size());
+    }
 
-    bool allValid() const { return allValid_; }
+    bool allValid() const {
+        return allValid_;
+    }
 
-    int callsFrom(const std::string& number) const
-    {
+    int callsFrom(const std::string& number) const {
         auto it = callCount_.find(number);
         return it != callCount_.end() ? it->second : 0;
     }
 
-    int durationFrom(const std::string& number) const
-    {
+    int durationFrom(const std::string& number) const {
         auto it = duration_.find(number);
         return it != duration_.end() ? it->second : 0;
     }
@@ -105,13 +102,12 @@ private:
     std::unordered_map<std::string, int> duration_;
 };
 
-int main()
-{
+int main() {
     CallStore store;
 
     std::string line;
-    while (std::getline(std::cin, line) && line != "#") {
-        if (line.empty())
+    while(std::getline(std::cin, line) && line != "#") {
+        if(line.empty())
             continue;
 
         std::istringstream ss(line);
@@ -122,23 +118,23 @@ int main()
         store.add(c);
     }
 
-    while (std::getline(std::cin, line) && line != "#") {
-        if (line.empty())
+    while(std::getline(std::cin, line) && line != "#") {
+        if(line.empty())
             continue;
 
         std::istringstream ss(line);
         std::string query;
         ss >> query;
 
-        if (query == "?check_phone_number") {
+        if(query == "?check_phone_number") {
             std::cout << (store.allValid() ? 1 : 0) << '\n';
-        } else if (query == "?number_calls_from") {
+        } else if(query == "?number_calls_from") {
             std::string num;
             ss >> num;
             std::cout << store.callsFrom(num) << '\n';
-        } else if (query == "?number_total_calls") {
+        } else if(query == "?number_total_calls") {
             std::cout << store.total() << '\n';
-        } else if (query == "?count_time_calls_from") {
+        } else if(query == "?count_time_calls_from") {
             std::string num;
             ss >> num;
             std::cout << store.durationFrom(num) << '\n';

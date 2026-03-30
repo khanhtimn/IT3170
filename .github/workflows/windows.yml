@@ -6,43 +6,42 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
-    name: Build on Windows
+  build-and-test:
+    name: Build & Test on Windows
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v4
+    
     - name: Install Visual Studio Build Tools
       uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: x64
-    - name: Install just
-      uses: extractions/setup-just@v2
-    - name: Build source files and test framework
-      shell: pwsh
-      run: |
-        just build-all
-        just build-test
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: windows-build
-        path: build/
-        retention-days: 5
+        
+    - name: Get CMake
+      uses: lukka/get-cmake@latest
 
-  test:
-    name: Test on Windows
-    needs: build
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Install just
-      uses: extractions/setup-just@v2
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: windows-build
-        path: build
-    - name: Run tests
+    - name: Configure CMake
       shell: pwsh
-      run: just test-all
- 
+      run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      shell: pwsh
+      run: cmake --build build --config Release -j 4
+      
+    - name: Run Tests
+      shell: pwsh
+      run: ctest --test-dir build -C Release --output-on-failure --output-junit test-results.xml
+
+    - name: Publish Test Report
+      uses: mikepenz/action-junit-report@v4
+      if: always()
+      with:
+        report_paths: 'build/test-results.xml'
+
+    - name: Upload CTest Logs
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: ctest-logs-windows
+        path: build/Testing/Temporary/
+        retention-days: 7

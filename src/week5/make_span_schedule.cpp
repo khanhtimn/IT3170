@@ -37,42 +37,34 @@ Output
 #include <queue>
 #include <vector>
 
-using std::cin;
-using std::cout;
-using std::endl;
-using std::queue;
-using std::vector;
-
 struct Task {
     int duration;
-    vector<int> successors;
+    std::vector<int> successors;
 };
 
-void add_dependency(vector<Task>& tasks, vector<int>& in_degree, int from, int to)
-{
+void add_dependency(std::vector<Task>& tasks, std::vector<int>& in_degree, int from, int to) {
     tasks[from].successors.push_back(to);
     in_degree[to]++;
 }
 
-vector<int> topological_sort(const vector<Task>& tasks, vector<int>& in_degree, int num_tasks)
-{
-    vector<int> order;
-    queue<int> ready_tasks;
+std::vector<int> topological_sort(const std::vector<Task>& tasks, std::vector<int>& in_degree, int num_tasks) {
+    std::vector<int> order;
+    std::queue<int> ready_tasks;
 
-    for (int i = 1; i <= num_tasks; ++i) {
-        if (in_degree[i] == 0) {
+    for(int i = 1; i <= num_tasks; ++i) {
+        if(in_degree[i] == 0) {
             ready_tasks.push(i);
         }
     }
 
-    while (!ready_tasks.empty()) {
+    while(!ready_tasks.empty()) {
         int current = ready_tasks.front();
         ready_tasks.pop();
         order.push_back(current);
 
-        for (int next : tasks[current].successors) {
+        for(int next : tasks[current].successors) {
             in_degree[next]--;
-            if (in_degree[next] == 0) {
+            if(in_degree[next] == 0) {
                 ready_tasks.push(next);
             }
         }
@@ -81,56 +73,46 @@ vector<int> topological_sort(const vector<Task>& tasks, vector<int>& in_degree, 
     return order;
 }
 
-void read_input(vector<Task>& tasks, vector<int>& in_degree, int num_tasks, int num_dependencies)
-{
-    for (int i = 1; i <= num_tasks; ++i) {
-        cin >> tasks[i].duration;
+void read_input(std::vector<Task>& tasks, std::vector<int>& in_degree, int num_tasks, int num_dependencies) {
+    for(int i = 1; i <= num_tasks; ++i) {
+        std::cin >> tasks[i].duration;
     }
 
-    for (int i = 0; i < num_dependencies; ++i) {
+    for(int i = 0; i < num_dependencies; ++i) {
         int from, to;
-        cin >> from >> to;
+        std::cin >> from >> to;
         add_dependency(tasks, in_degree, from, to);
     }
 
-    for (int i = 1; i <= num_tasks; ++i) {
-        if (tasks[i].successors.empty()) {
+    for(int i = 1; i <= num_tasks; ++i) {
+        if(tasks[i].successors.empty()) {
             add_dependency(tasks, in_degree, i, num_tasks + 1);
         }
     }
 }
 
-int find_earliest_completion_time(const vector<Task>& tasks,
-    vector<int>& in_degree,
-    int num_tasks)
-{
-    vector<int> completion_time(num_tasks + 2, 0);
-    vector<int> order = topological_sort(tasks, in_degree, num_tasks);
+int find_earliest_completion_time(const std::vector<Task>& tasks, std::vector<int>& in_degree, int num_tasks) {
+    std::vector<int> completion_time(num_tasks + 2, 0);
+    std::vector<int> order = topological_sort(tasks, in_degree, num_tasks);
 
-    for (int task : order) {
-        for (int next : tasks[task].successors) {
-            completion_time[next] = std::max(
-                completion_time[next],
-                completion_time[task] + tasks[task].duration);
+    for(int task : order) {
+        for(int next : tasks[task].successors) {
+            completion_time[next] = std::max(completion_time[next], completion_time[task] + tasks[task].duration);
         }
     }
 
     return completion_time[num_tasks + 1];
 }
 
-int main()
-{
-    std::ios::sync_with_stdio(false);
-    std::cin.tie(nullptr);
-
+int main() {
     int num_tasks, num_dependencies;
-    cin >> num_tasks >> num_dependencies;
+    std::cin >> num_tasks >> num_dependencies;
 
-    vector<Task> tasks(num_tasks + 2);
-    vector<int> in_degree(num_tasks + 2, 0);
+    std::vector<Task> tasks(num_tasks + 2);
+    std::vector<int> in_degree(num_tasks + 2, 0);
 
     read_input(tasks, in_degree, num_tasks, num_dependencies);
-    cout << find_earliest_completion_time(tasks, in_degree, num_tasks) << endl;
+    std::cout << find_earliest_completion_time(tasks, in_degree, num_tasks) << std::endl;
 
     return 0;
 }

@@ -39,66 +39,56 @@ Total cost 10 + 20 = 30 dong
 #include <queue>
 #include <vector>
 
-using std::cin;
-using std::cout;
-using std::endl;
-using std::priority_queue;
-using std::vector;
-
 struct State {
     long long cost;
     int remaining_steps;
     int city;
 
-    bool operator>(const State& other) const
-    {
+    bool operator>(const State& other) const {
         return cost > other.cost;
     }
 };
 
-void read_bus_info(vector<long long>& fare, vector<int>& max_steps)
-{
+void read_bus_info(std::vector<long long>& fare, std::vector<int>& max_steps) {
     int n = fare.size() - 1;
-    for (int i = 1; i <= n; ++i) {
-        cin >> fare[i] >> max_steps[i];
+    for(int i = 1; i <= n; ++i) {
+        std::cin >> fare[i] >> max_steps[i];
     }
 }
 
-void add_road(vector<vector<int>>& graph, int a, int b)
-{
+void add_road(std::vector<std::vector<int>>& graph, int a, int b) {
     graph[a].push_back(b);
     graph[b].push_back(a);
 }
 
-long long find_min_cost(const vector<vector<int>>& graph,
-    const vector<long long>& fare,
-    const vector<int>& max_steps,
-    int start,
-    int end)
-{
+long long find_min_cost(const std::vector<std::vector<int>>& graph,
+                        const std::vector<long long>& fare,
+                        const std::vector<int>& max_steps,
+                        int start,
+                        int end) {
     int n = graph.size() - 1;
-    vector<vector<long long>> min_cost(n + 1, vector<long long>(n + 1, 1e18));
+    std::vector<std::vector<long long>> min_cost(n + 1, std::vector<long long>(n + 1, 1e18));
 
-    priority_queue<State, vector<State>, std::greater<>> pq;
+    std::priority_queue<State, std::vector<State>, std::greater<>> pq;
     min_cost[start][max_steps[start]] = fare[start];
     pq.push({ fare[start], max_steps[start], start });
 
-    while (!pq.empty()) {
+    while(!pq.empty()) {
         auto [cost, steps, city] = pq.top();
         pq.pop();
 
-        if (cost != min_cost[city][steps])
+        if(cost != min_cost[city][steps])
             continue;
-        if (city == end)
+        if(city == end)
             return cost;
 
-        for (int next : graph[city]) {
-            if (steps > 0) {
-                if (min_cost[next][steps - 1] > cost) {
+        for(int next : graph[city]) {
+            if(steps > 0) {
+                if(min_cost[next][steps - 1] > cost) {
                     min_cost[next][steps - 1] = cost;
                     pq.push({ cost, steps - 1, next });
                 }
-                if (min_cost[next][max_steps[next]] > cost + fare[next]) {
+                if(min_cost[next][max_steps[next]] > cost + fare[next]) {
                     min_cost[next][max_steps[next]] = cost + fare[next];
                     pq.push({ cost + fare[next], max_steps[next], next });
                 }
@@ -108,26 +98,22 @@ long long find_min_cost(const vector<vector<int>>& graph,
     return -1;
 }
 
-int main()
-{
-    std::ios::sync_with_stdio(false);
-    std::cin.tie(nullptr);
-
+int main() {
     int num_cities, num_roads;
-    cin >> num_cities >> num_roads;
+    std::cin >> num_cities >> num_roads;
 
-    vector<vector<int>> graph(num_cities + 1);
-    vector<long long> fare(num_cities + 1);
-    vector<int> max_steps(num_cities + 1);
+    std::vector<std::vector<int>> graph(num_cities + 1);
+    std::vector<long long> fare(num_cities + 1);
+    std::vector<int> max_steps(num_cities + 1);
 
     read_bus_info(fare, max_steps);
 
-    for (int i = 0; i < num_roads; ++i) {
+    for(int i = 0; i < num_roads; ++i) {
         int a, b;
-        cin >> a >> b;
+        std::cin >> a >> b;
         add_road(graph, a, b);
     }
 
-    cout << find_min_cost(graph, fare, max_steps, 1, num_cities) << endl;
+    std::cout << find_min_cost(graph, fare, max_steps, 1, num_cities) << std::endl;
     return 0;
 }

@@ -27,14 +27,11 @@ Explain: Jonh can put his 3 cows in the stalls at positions 1, 4 and 8, resultin
 #include <iostream>
 #include <vector>
 
-using std::vector;
-
-bool can_place(const vector<int>& pos, int C, int D)
-{
+bool can_place(const std::vector<int>& pos, int C, int D) {
     int placed = 1;
     int last = pos[0];
-    for (int i = 1; i < (int)pos.size() && placed < C; ++i) {
-        if (pos[i] - last >= D) {
+    for(int i = 1; i < (int)pos.size() && placed < C; ++i) {
+        if(pos[i] - last >= D) {
             last = pos[i];
             ++placed;
         }
@@ -42,15 +39,14 @@ bool can_place(const vector<int>& pos, int C, int D)
     return placed >= C;
 }
 
-int find_max_distance(vector<int> positions, int C)
-{
+int find_max_distance(std::vector<int> positions, int C) {
     std::sort(positions.begin(), positions.end());
 
     int low = 0;
     int high = positions.back() - positions.front();
-    while (low < high) {
+    while(low < high) {
         int mid = low + (high - low + 1) / 2;
-        if (can_place(positions, C, mid)) {
+        if(can_place(positions, C, mid)) {
             low = mid;
         } else {
             high = mid - 1;
@@ -59,18 +55,14 @@ int find_max_distance(vector<int> positions, int C)
     return low;
 }
 
-int main()
-{
-    std::ios::sync_with_stdio(false);
-    std::cin.tie(nullptr);
-
+int main() {
     int T;
     std::cin >> T;
-    while (T--) {
+    while(T--) {
         int N, C;
         std::cin >> N >> C;
-        vector<int> positions(N);
-        for (int i = 0; i < N; ++i) {
+        std::vector<int> positions(N);
+        for(int i = 0; i < N; ++i) {
             std::cin >> positions[i];
         }
 
