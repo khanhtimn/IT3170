@@ -84,113 +84,96 @@ struct Submission {
     int point;
 };
 
-struct SubmissionStore {
-    void add(const Submission& s) {
-        submissions_.push_back(s);
-        sorted_ = false;
+class Submits {
+public:
+    Submits() {
+        std::string line;
 
-        if(s.status == "ERR") {
-            error_count_by_user_[s.user_id]++;
+        // parse first part
+        while(std::getline(std::cin, line) && line != "#") {
+            std::stringstream ss(line);
+            Submission submission;
+            ss >> submission.user_id >> submission.problem_id >> submission.time_point >> submission.status >>
+                submission.point;
+            submissions.push_back(submission);
+            if(submission.status == "ERR") {
+                user_error_count[submission.user_id]++;
+            }
+            if(submission.status == "OK") {
+                user_problem_max_points[submission.user_id][submission.problem_id] =
+                    std::max(user_problem_max_points[submission.user_id][submission.problem_id], submission.point);
+            }
         }
-        if(s.status == "OK") {
-            auto& cur = max_points_[s.user_id][s.problem_id];
-            cur = std::max(cur, s.point);
+        sort(submissions.begin(), submissions.end(), [](const Submission& a, const Submission& b) {
+            return a.time_point < b.time_point;
+        });
+
+        // process
+        while(std::getline(std::cin, line) && line != "#") {
+            std::stringstream ss(line);
+            std::string query;
+            ss >> query;
+            if(query == "?total_number_submissions") {
+                std::cout << total_number_submissions() << std::endl;
+            } else if(query == "?number_error_submision") {
+                std::cout << number_error_submision() << std::endl;
+            } else if(query == "?number_error_submision_of_user") {
+                std::string user_id;
+                ss >> user_id;
+                std::cout << number_error_submision_of_user(user_id) << std::endl;
+            } else if(query == "?total_point_of_user") {
+                std::string user_id;
+                ss >> user_id;
+                std::cout << total_point_of_user(user_id) << std::endl;
+            } else if(query == "?number_submission_period") {
+                std::string from_time, to_time;
+                ss >> from_time >> to_time;
+                std::cout << number_submission_period(from_time, to_time) << std::endl;
+            }
         }
-    }
-
-    int total() const {
-        return static_cast<int>(submissions_.size());
-    }
-
-    int totalErrors() const {
-        return static_cast<int>(std::count_if(
-            submissions_.begin(), submissions_.end(), [](const Submission& s) { return s.status == "ERR"; }));
-    }
-
-    int errorsOf(const std::string& user_id) const {
-        auto it = error_count_by_user_.find(user_id);
-        return it != error_count_by_user_.end() ? it->second : 0;
-    }
-
-    int totalPointsOf(const std::string& user_id) const {
-        auto it = max_points_.find(user_id);
-        if(it == max_points_.end())
-            return 0;
-        int sum = 0;
-        for(const auto& [_, pts] : it->second)
-            sum += pts;
-        return sum;
-    }
-
-    int countInPeriod(const std::string& from, const std::string& to) {
-        ensureSorted();
-        auto lo = std::lower_bound(submissions_.begin(),
-                                   submissions_.end(),
-                                   from,
-                                   [](const Submission& s, const std::string& t) { return s.time_point < t; });
-        auto hi = std::upper_bound(submissions_.begin(),
-                                   submissions_.end(),
-                                   to,
-                                   [](const std::string& t, const Submission& s) { return t < s.time_point; });
-        return static_cast<int>(std::distance(lo, hi));
     }
 
 private:
-    void ensureSorted() {
-        if(sorted_)
-            return;
-        std::sort(submissions_.begin(), submissions_.end(), [](const Submission& a, const Submission& b) {
-            return a.time_point < b.time_point;
-        });
-        sorted_ = true;
+    std::vector<Submission> submissions;
+    std::unordered_map<std::string, int> user_error_count;
+    std::unordered_map<std::string, std::unordered_map<std::string, int>> user_problem_max_points;
+
+    int total_number_submissions() {
+        return submissions.size();
     }
 
-    std::vector<Submission> submissions_;
-    bool sorted_ = false;
-    std::unordered_map<std::string, int> error_count_by_user_;
-    std::unordered_map<std::string, std::unordered_map<std::string, int>> max_points_;
+    int number_error_submision() {
+        return count_if(submissions.begin(), submissions.end(), [](const Submission& s) { return s.status == "ERR"; });
+    }
+
+    int number_error_submision_of_user(const std::string& user_id) {
+        return user_error_count[user_id];
+    }
+
+    int total_point_of_user(const std::string& user_id) {
+        int total_points = 0;
+        for(const auto& problem_points : user_problem_max_points[user_id]) {
+            total_points += problem_points.second;
+        }
+        return total_points;
+    }
+
+    int number_submission_period(const std::string& from_time, const std::string& to_time) {
+        auto lower = lower_bound(submissions.begin(),
+                                 submissions.end(),
+                                 from_time,
+                                 [](const Submission& s, const std::string& time) { return s.time_point < time; });
+
+        auto upper = upper_bound(submissions.begin(),
+                                 submissions.end(),
+                                 to_time,
+                                 [](const std::string& time, const Submission& s) { return time < s.time_point; });
+
+        return distance(lower, upper);
+    }
 };
 
 int main() {
-    SubmissionStore store;
-
-    std::string line;
-    while(std::getline(std::cin, line) && line != "#") {
-        if(line.empty())
-            continue;
-
-        std::istringstream ss(line);
-        Submission s;
-        ss >> s.user_id >> s.problem_id >> s.time_point >> s.status >> s.point;
-        store.add(s);
-    }
-
-    while(std::getline(std::cin, line) && line != "#") {
-        if(line.empty())
-            continue;
-
-        std::istringstream ss(line);
-        std::string query;
-        ss >> query;
-
-        if(query == "?total_number_submissions") {
-            std::cout << store.total() << '\n';
-        } else if(query == "?number_error_submision") {
-            std::cout << store.totalErrors() << '\n';
-        } else if(query == "?number_error_submision_of_user") {
-            std::string uid;
-            ss >> uid;
-            std::cout << store.errorsOf(uid) << '\n';
-        } else if(query == "?total_point_of_user") {
-            std::string uid;
-            ss >> uid;
-            std::cout << store.totalPointsOf(uid) << '\n';
-        } else if(query == "?number_submission_period") {
-            std::string from, to;
-            ss >> from >> to;
-            std::cout << store.countInPeriod(from, to) << '\n';
-        }
-    }
-
+    Submits s{ };
     return 0;
 }

@@ -18,21 +18,25 @@ Output
 */
 
 #include <iostream>
-#include <numeric>
 #include <vector>
 
-int count_solutions(std::vector<int>& a, int n, int M) {
-    int sumA = std::accumulate(a.begin(), a.end(), 0);
-    if(M < sumA)
-        return 0;
+int count_solutions(const std::vector<int>& a, int n, int M) {
+    int sum{ };
+    for(auto const& x : a) {
+        sum += x;
+    }
 
-    int R = M - sumA;
-    std::vector<long long> dp(R + 1, 0);
+    if(sum > M) {
+        return 0;
+    }
+
+    auto R = M - sum;
+    std::vector<int> dp(R + 1, 0);
     dp[0] = 1;
 
-    for(int coin : a) {
-        for(int s = coin; s <= R; ++s) {
-            dp[s] += dp[s - coin];
+    for(const auto& x : a) {
+        for(auto s = x; s <= R; ++s) {
+            dp[s] += dp[s - x];
         }
     }
     return dp[R];

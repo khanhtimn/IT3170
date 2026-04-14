@@ -20,38 +20,49 @@ Output
 #include <iostream>
 #include <vector>
 
-const int MOD = 1000000007;
+constexpr int MOD = 1e9 + 7;
 
-int merge_count(std::vector<int>& a, std::vector<int>& buff, int left, int right) {
-    if(right - left <= 1)
+int merge(std::vector<int>& a, int left, int right) {
+    if(right - left <= 1) {
         return 0;
+    }
     int mid = left + (right - left) / 2;
-    int inversion_count = (merge_count(a, buff, left, mid) % MOD + merge_count(a, buff, mid, right) % MOD) % MOD;
+    int count = (merge(a, left, mid) + merge(a, mid, right)) % MOD;
 
-    int i = left, j = mid, k = left;
-    while(i < mid || j < right) {
-        if(i < mid && (j == right || a[i] <= a[j])) {
-            buff[k++] = a[i++];
+    std::vector<int> buf{ };
+    int i = left, j = mid;
+    while(i < mid && j < right) {
+        if(a[i] <= a[j]) {
+            buf.push_back(a[i++]);
         } else {
-            inversion_count = (inversion_count % MOD + (mid - i) % MOD) % MOD;
-            buff[k++] = a[j++];
+            count = (count + (mid - i)) % MOD;
+            buf.push_back(a[j++]);
         }
     }
-    for(int t = left; t < right; ++t) {
-        a[t] = buff[t];
+
+    while(i < mid) {
+        buf.push_back(a[i++]);
     }
-    return inversion_count;
+    while(j < right) {
+        buf.push_back(a[j++]);
+    }
+
+    std::copy(buf.begin(), buf.end(), a.begin() + left);
+
+    return count;
 }
 
 int main() {
     int n;
     std::cin >> n;
-    std::vector<int> a(n), tmp(n);
-    for(int i = 0; i < n; ++i) {
-        std::cin >> a[i];
+    auto seq = std::vector<int>(n);
+    auto buf = std::vector<int>(n);
+
+    for(auto& x : seq) {
+        std::cin >> x;
     }
 
-    int result = merge_count(a, tmp, 0, n);
-    std::cout << result << std::endl;
+    std::cout << merge(seq, 0, n) << std::endl;
+
     return 0;
 }

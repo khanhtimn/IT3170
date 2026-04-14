@@ -31,11 +31,8 @@ Output
 #include <vector>
 
 struct SparseTable {
-    int n;
-    std::vector<std::vector<int>> st;
-
-    SparseTable(const std::vector<int>& arr)
-        : n((int)arr.size()) {
+    SparseTable(const std::vector<int>& arr) {
+        n = arr.size();
         int max_log = std::log2(n) + 1;
         st.assign(n, std::vector<int>(max_log));
 
@@ -55,6 +52,10 @@ struct SparseTable {
         int k = std::log2(len);
         return std::min(st[L][k], st[R - (1 << k) + 1][k]);
     }
+
+private:
+    int n;
+    std::vector<std::vector<int>> st;
 };
 
 int main() {
@@ -80,6 +81,6 @@ int main() {
         sum += solver.query(start, end);
     }
 
-    std::cout << sum << "\n";
+    std::cout << sum << std::endl;
     return 0;
 }

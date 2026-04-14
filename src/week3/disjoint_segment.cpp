@@ -24,42 +24,40 @@ Output
 
 #include <algorithm>
 #include <iostream>
-#include <utility>
 #include <vector>
 
-bool compare_segments(const std::pair<int, int>& a, const std::pair<int, int>& b) {
-    if(a.second != b.second)
-        return a.second < b.second;
-    return a.first < b.first;
-}
+int count(std::vector<std::pair<int, int>>& set) {
+    int count{ }, last{ };
 
-void sort_segments(std::vector<std::pair<int, int>>& segments) {
-    std::sort(segments.begin(), segments.end(), compare_segments);
+    auto cmp = [](const std::pair<int, int>& l, const std::pair<int, int>& r) {
+        if(l.second != r.second) {
+            return l.second < r.second;
+        }
+        return l.first < r.first;
+    };
+    std::sort(set.begin(), set.end(), cmp);
+
+    for(auto& pair : set) {
+        if(pair.first > last) {
+            ++count;
+            last = pair.second;
+        }
+    }
+
+    return count;
 }
 
 int main() {
     int n;
     std::cin >> n;
-    std::vector<std::pair<int, int>> segments;
-    segments.reserve(n);
 
-    for(int i = 0; i < n; ++i) {
-        int a, b;
-        std::cin >> a >> b;
-        segments.emplace_back(a, b);
+    auto set = std::vector<std::pair<int, int>>(n);
+
+    for(auto& pair : set) {
+        std::cin >> pair.first >> pair.second;
     }
 
-    sort_segments(segments);
+    std::cout << count(set) << std::endl;
 
-    int count = 0;
-    int last = 0;
-    for(auto& segment : segments) {
-        if(segment.first > last) {
-            ++count;
-            last = segment.second;
-        }
-    }
-
-    std::cout << count << std::endl;
     return 0;
 }

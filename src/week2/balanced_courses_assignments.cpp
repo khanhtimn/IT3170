@@ -48,93 +48,58 @@ Output
 */
 
 #include <algorithm>
-#include <climits>
 #include <iostream>
+#include <limits>
 #include <vector>
 
-struct BalancedCoursesSolver {
-    int solve(int num_teachers,
-              int num_courses,
-              const std::vector<std::vector<bool>>& teach_matrix,
-              const std::vector<std::vector<bool>>& conflict_matrix) {
-        m = num_teachers;
-        n = num_courses;
-        can_teach = teach_matrix;
-        conflicts = conflict_matrix;
 
-        assignment.assign(n + 1, 0);
-        load.assign(m + 1, 0);
-        best_max_load = INT_MAX;
-        solution_found = false;
+int m, n;
+std::vector<std::vector<bool>> can_teach;
+std::vector<std::vector<bool>> conflict;
+std::vector<int> course;
+std::vector<int> load;
+int res = std::numeric_limits<int>::max();
 
-        try_assignment(1);
-
-        if(solution_found) {
-            return best_max_load;
-        } else {
-            return -1;
+bool check(int t, int c) {
+    for(int i = 1; i < c; ++i) {
+        if(course[i] == t && conflict[c][i]) {
+            return false;
         }
     }
+    return true;
+}
 
-private:
-    bool has_conflict(int t, int c) {
-        for(int i = 1; i < c; ++i) {
-            if(assignment[i] == t && conflicts[c][i]) {
-                return true;
-            }
+void TRY(int k) {
+    if(k > n) {
+        int max_load = *max_element(load.begin() + 1, load.begin() + m + 1);
+        if(max_load < res) {
+            res = max_load;
         }
-        return false;
+        return;
     }
 
-    void try_assignment(int k) {
-        if(k > n) {
-            int max_load = *max_element(load.begin() + 1, load.begin() + m + 1);
-            if(max_load < best_max_load) {
-                best_max_load = max_load;
+    for(int t = 1; t <= m; ++t) {
+        if(can_teach[t][k] && check(t, k)) {
+            course[k] = t;
+            load[t]++;
+
+            if(load[t] < res) {
+                TRY(k + 1);
             }
-            solution_found = true;
-            return;
-        }
 
-        for(int t = 1; t <= m; ++t) {
-            if(can_teach[t][k] && !has_conflict(t, k)) {
-                assignment[k] = t;
-                load[t]++;
-
-                if(load[t] < best_max_load) {
-                    try_assignment(k + 1);
-                }
-
-                load[t]--;
-                assignment[k] = 0;
-            }
+            load[t]--;
+            course[k] = 0;
         }
     }
-
-    int m, n;
-    std::vector<std::vector<bool>> can_teach;
-    std::vector<std::vector<bool>> conflicts;
-    std::vector<int> assignment;
-    std::vector<int> load;
-    int best_max_load;
-    bool solution_found;
-};
-
-int balanced_courses_solve_wrapper(int m,
-                                   int n,
-                                   const std::vector<std::vector<bool>>& teach,
-                                   const std::vector<std::vector<bool>>& conflict) {
-    BalancedCoursesSolver solver;
-    return solver.solve(m, n, teach, conflict);
 }
 
 int main() {
-    int m, n;
-    if(!(std::cin >> m >> n))
-        return 0;
+    std::cin >> m >> n;
 
-    std::vector<std::vector<bool>> can_teach(m + 1, std::vector<bool>(n + 1, false));
-    std::vector<std::vector<bool>> conflicts(n + 1, std::vector<bool>(n + 1, false));
+    can_teach.resize(m + 1, std::vector<bool>(n + 1, false));
+    conflict.resize(n + 1, std::vector<bool>(n + 1, false));
+    course.resize(n + 1, 0);
+    load.resize(m + 1, 0);
 
     for(int i = 1; i <= m; ++i) {
         int k;
@@ -151,11 +116,16 @@ int main() {
     for(int i = 0; i < num_conflicts; ++i) {
         int c1, c2;
         std::cin >> c1 >> c2;
-        conflicts[c1][c2] = conflicts[c2][c1] = true;
+        conflict[c1][c2] = conflict[c2][c1] = true;
     }
 
-    BalancedCoursesSolver solver;
-    std::cout << solver.solve(m, n, can_teach, conflicts) << std::endl;
+    TRY(1);
+
+    if(res < std::numeric_limits<int>::max()) {
+        std::cout << res << std::endl;
+    } else {
+        std::cout << -1 << std::endl;
+    }
 
     return 0;
 }

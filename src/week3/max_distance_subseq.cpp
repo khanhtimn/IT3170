@@ -27,26 +27,26 @@ Explain: Jonh can put his 3 cows in the stalls at positions 1, 4 and 8, resultin
 #include <iostream>
 #include <vector>
 
-bool can_place(const std::vector<int>& pos, int C, int D) {
-    int placed = 1;
+inline bool check(const std::vector<int>& pos, int C, int D) {
+    int num_subs = 1;
     int last = pos[0];
-    for(int i = 1; i < (int)pos.size() && placed < C; ++i) {
+    for(size_t i = 1; i < pos.size() && num_subs < C; ++i) {
         if(pos[i] - last >= D) {
             last = pos[i];
-            ++placed;
+            ++num_subs;
         }
     }
-    return placed >= C;
+    return num_subs >= C;
 }
 
-int find_max_distance(std::vector<int> positions, int C) {
-    std::sort(positions.begin(), positions.end());
+int find_max(std::vector<int>& a, int C) {
+    std::sort(a.begin(), a.end());
 
     int low = 0;
-    int high = positions.back() - positions.front();
+    int high = a.back() - a.front();
     while(low < high) {
         int mid = low + (high - low + 1) / 2;
-        if(can_place(positions, C, mid)) {
+        if(check(a, C, mid)) {
             low = mid;
         } else {
             high = mid - 1;
@@ -61,12 +61,12 @@ int main() {
     while(T--) {
         int N, C;
         std::cin >> N >> C;
-        std::vector<int> positions(N);
-        for(int i = 0; i < N; ++i) {
-            std::cin >> positions[i];
+        auto seq = std::vector<int>(N);
+        for(auto& x : seq) {
+            std::cin >> x;
         }
 
-        std::cout << find_max_distance(std::move(positions), C) << std::endl;
+        std::cout << find_max(seq, C) << std::endl;
     }
     return 0;
 }

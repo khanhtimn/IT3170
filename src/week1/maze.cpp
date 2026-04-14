@@ -33,72 +33,103 @@ Output
 #include <array>
 #include <iostream>
 #include <queue>
-#include <utility>
 #include <vector>
 
-constexpr std::array<int, 4> dx = { -1, 1, 0, 0 };
-constexpr std::array<int, 4> dy = { 0, 0, -1, 1 };
+struct Cell {
+    bool blocked = false;
+};
 
-int solve(std::vector<std::vector<int>>& maze, int n, int m, int r, int c) {
-    std::vector<std::vector<bool>> visited(n, std::vector<bool>(m, false));
+using Maze = std::vector<std::vector<Cell>>;
 
-    std::queue<std::pair<std::pair<int, int>, int>> q;
+struct Position {
+    int row = 0;
+    int col = 0;
+};
 
-    q.push({ { r, c }, 0 });
-    visited[r][c] = true;
+class MazeSolver {
+public:
+    MazeSolver() {
+        std::cin >> rows_ >> cols_ >> start_.row >> start_.col;
+        --start_.row;
+        --start_.col;
 
-    while(!q.empty()) {
-        auto u = q.front();
-        q.pop();
-
-        int r0 = u.first.first;
-        int c0 = u.first.second;
-        int steps = u.second;
-
-        if(r0 == 0 || r0 == n - 1 || c0 == 0 || c0 == m - 1) {
-            return steps + 1;
-        }
-
-        for(int i = 0; i < 4; i++) {
-            int r1 = r0 + dx[i];
-            int c1 = c0 + dy[i];
-
-            if(r1 >= 0 && r1 < n && c1 >= 0 && c1 < m && maze[r1][c1] == 0 && !visited[r1][c1]) {
-                visited[r1][c1] = true;
-                q.push({ { r1, c1 }, steps + 1 });
+        maze_.assign(rows_, std::vector<Cell>(cols_));
+        for(int row{ }; row < rows_; ++row) {
+            for(int col{ }; col < cols_; ++col) {
+                int value;
+                std::cin >> value;
+                maze_[row][col].blocked = (value == 1);
             }
         }
     }
 
-    return -1;
-}
+    int solve() const {
+        if(!is_valid(start_) || maze_[start_.row][start_.col].blocked) {
+            return -1;
+        }
+
+        if(is_border(start_)) {
+            return 1;
+        }
+
+        std::vector<std::vector<int>> dist(rows_, std::vector<int>(cols_, -1));
+
+        std::queue<Position> q;
+        q.push(start_);
+        dist[start_.row][start_.col] = 0;
+
+        while(!q.empty()) {
+            const Position current = q.front();
+            q.pop();
+
+            for(int dir = 0; dir < 4; ++dir) {
+                Position next{ current.row + dx[dir], current.col + dy[dir] };
+
+                if(!is_valid(next)) {
+                    continue;
+                }
+
+                if(maze_[next.row][next.col].blocked) {
+                    continue;
+                }
+
+                if(dist[next.row][next.col] != -1) {
+                    continue;
+                }
+
+                dist[next.row][next.col] = dist[current.row][current.col] + 1;
+
+                if(is_border(next)) {
+                    return dist[next.row][next.col] + 1;
+                }
+
+                q.push(next);
+            }
+        }
+
+        return -1;
+    }
+
+private:
+    bool is_valid(const Position& pos) const {
+        return pos.row >= 0 && pos.row < rows_ && pos.col >= 0 && pos.col < cols_;
+    }
+
+    bool is_border(const Position& pos) const {
+        return pos.row == 0 || pos.row == rows_ - 1 || pos.col == 0 || pos.col == cols_ - 1;
+    }
+
+    static constexpr std::array<int, 4> dx{ -1, 1, 0, 0 };
+    static constexpr std::array<int, 4> dy{ 0, 0, -1, 1 };
+
+    int rows_ = 0;
+    int cols_ = 0;
+    Position start_;
+    Maze maze_;
+};
 
 int main() {
-    int n, m, r, c;
-    std::cin >> n >> m >> r >> c;
-
-    r--;
-    c--;
-
-    std::vector<std::vector<int>> maze(n, std::vector<int>(m));
-    for(int i = 0; i < n; i++) {
-        for(int j = 0; j < m; j++) {
-            std::cin >> maze[i][j];
-        }
-    }
-
-    if(maze[r][c] == 1) {
-        std::cout << -1 << std::endl;
-        return 0;
-    }
-
-    if(r == 0 || r == n - 1 || c == 0 || c == m - 1) {
-        std::cout << 1 << std::endl;
-        return 0;
-    }
-
-    int result = solve(maze, n, m, r, c);
-    std::cout << result << std::endl;
-
+    MazeSolver solver{ };
+    std::cout << solver.solve() << std::endl;
     return 0;
 }
